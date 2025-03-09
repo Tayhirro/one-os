@@ -28,6 +28,9 @@ public class InterruptController {
     public InterruptController(ProtectedMemory protectedMemory) {
         IDT = protectedMemory.getIDT();
     }
+
+
+
     public InterruptSysCallInfo triggerSystemCall(ProcessInfoImpl processInfo) {    //对processInfo的处理
         //默认是0x80，直接调用SytemCallHandler
         InterruptInfo interruptInfo = IDT.get(SYSTEM_CALL).execute(processInfo);

@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Builder;
 import lombok.Data;
 
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.common.InterruptConstant.SystemCallType;
@@ -12,6 +13,7 @@ import newOs.dto.req.Info.InterruptSysCallInfo;
 
 @Data
 @Accessors(chain = true)
+@NoArgsConstructor
 public class ProcessInfoImpl implements InterruptSysCallInfo {
     private String name;      // 进程名称（如 "bash"）
     private int priority;     // 优先级（0-100）

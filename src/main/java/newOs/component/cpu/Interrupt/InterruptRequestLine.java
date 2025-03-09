@@ -9,8 +9,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @Slf4j
 public class InterruptRequestLine extends ConcurrentLinkedQueue<String> {
-    public InterruptRequestLine() {
+    public final String irlName;
+    public InterruptRequestLine(String irlName) {
         super();
+        this.irlName = irlName;
     }
 
     @Override

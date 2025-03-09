@@ -2,6 +2,7 @@ package newOs.service.ServiaceImpl;
 
 
 import newOs.common.InterruptConstant.InterruptType;
+import newOs.component.memory.protected1.PCB;
 import newOs.dto.req.Info.InfoImpl.ProcessInfoImpl;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.dto.req.ProcessManage.ProcessCreateReqDTO;
@@ -14,11 +15,15 @@ import newOs.service.ServiceInterface.ProcessManageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import static newOs.common.InterruptConstant.InterruptType.SYSTEM_CALL;
 import static newOs.common.InterruptConstant.SystemCallType.CREATE_PROCESS;
+import static newOs.common.InterruptConstant.SystemCallType.EXECUTE_PROCESS;
 
 @Service
 public class ProcessManageServiceImpl implements ProcessManageService {
     private final SystemCallDispatcher systemCallDispatcher;
+
+
 
     @Autowired
     public ProcessManageServiceImpl(SystemCallDispatcher systemCallDispatcher) {
@@ -39,7 +44,7 @@ public class ProcessManageServiceImpl implements ProcessManageService {
              * */
 
         //转入访管中断,传递JSON
-        ProcessInfoImpl processInfo = new ProcessInfoImpl().setSystemCallType(CREATE_PROCESS).setInterruptType(InterruptType.SYSTEM_CALL).setInstructions(instructions);
+        ProcessInfoImpl processInfo = new ProcessInfoImpl().setSystemCallType(CREATE_PROCESS).setInterruptType(SYSTEM_CALL).setInstructions(instructions);
         InterruptSysCallInfo processInfoReturnImpl = systemCallDispatcher.Dispatch(processInfo);
         if(processInfoReturnImpl instanceof ProcessInfoReturnImpl){
             return (ProcessInfoReturnImpl) processInfoReturnImpl;
@@ -57,11 +62,18 @@ public class ProcessManageServiceImpl implements ProcessManageService {
 
 
     @Override
-    public void executeProcess(String processName) {    //执行进程，转发给kernel的syscall
-
-
-
+    public void executeProcess(String processName) throws OSException{    //执行进程，转发给kernel的syscall
+        try {
+            //System.out.println("execute process");
+            ProcessInfoImpl processInfo = new ProcessInfoImpl().setSystemCallType(EXECUTE_PROCESS).setInterruptType(SYSTEM_CALL).setName(processName);
+            systemCallDispatcher.Dispatch(processInfo);
+        }catch (OSException e){
+            throw e;
+        }
+        //直接进行返回
     }
+
+
     @Override
     public ProcessQueryAllRespDTO queryAllProcessInfo() {    //查询所有进程信息，转发给kernel的syscall
         return new ProcessQueryAllRespDTO();

@@ -44,6 +44,9 @@ public class ProtectedMemory {
     //中断请求表
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
 
+    //IO中断线
+    private final ConcurrentLinkedQueue<Integer> irlIO;
+
     public  ProtectedMemory() {
         // 初始化数据结构
         pcbTable = new HashMap<>();
@@ -59,5 +62,6 @@ public class ProtectedMemory {
         highPriorityQueue = new ConcurrentLinkedQueue<>();
         mediumPriorityQueue = new ConcurrentLinkedQueue<>();
         lowPriorityQueue = new ConcurrentLinkedQueue<>();
+        irlIO = new ConcurrentLinkedQueue<>();
     }
 }

@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
+import static newOs.common.processConstant.processStateConstant.*;
 import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
 @Component
@@ -32,6 +33,7 @@ public class SideScheduler {
     private ExecutorService cpuSimulatorExecutor;
     private final ProtectedMemory protectedMemory;
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
+    private final ConcurrentLinkedQueue<Integer> irlIO;
 
 
     /*
@@ -53,11 +55,21 @@ public class SideScheduler {
 
         this.protectedMemory = protectedMemory;
         this.irlTable = protectedMemory.getIrlTable();
+        this.irlIO  = protectedMemory.getIrlIO();
     }
 
 
     public void schedulerProcess(PCB pcb){
         readyQueue.removeIf(p->p.equals(pcb));
+        pcb.setState(RUNNING);
+        //需要实现时间片控制
+        if (strategy.equals("RR")) // 时间片轮转
+            pcb.setRemainingTime(3800L);
+        else if (strategy.equals("MLFQ") && pcb.getRemainingTime() < 0)    // 多级反馈队列
+            pcb.setRemainingTime(3800L);
+            //不需要实现时间片控制
+        else if (strategy.equals("FCFS") || strategy.equals("SJF"))   //先来先服务或短作业优先
+            pcb.setRemainingTime(99999999L);
         //多级调度
         if(strategy == "MLFQ") {
             if (pcb.getPriority() == 1) {
@@ -76,6 +88,67 @@ public class SideScheduler {
     // 直接取出readyQueue中的第一个进程
     public void executeNextProcess(){
 
+    }
+
+    public void Ready2Running(PCB pcb){
+        pcb.setState(RUNNING);
+       if(strategy == "MLFQ") {
+           int priority = pcb.getPriority();
+           if (priority == 1) {
+               lowPriorityQueue.poll();
+           } else if (priority == 2) {
+               mediumPriorityQueue.poll();
+           } else if (priority == 3) {
+               highPriorityQueue.poll();
+           }
+           runningQueue.add(pcb);
+       }else{
+              readyQueue.remove(pcb);
+              runningQueue.add(pcb);
+
+       }
+    }
+    public void Runing2Wait(PCB pcb){
+        pcb.setState(WAITING);
+        if(strategy == "MLFQ") {
+            int priority = pcb.getPriority();
+            if (priority == 1) {
+                lowPriorityQueue.poll();
+            } else if (priority == 2) {
+                mediumPriorityQueue.poll();
+            } else if (priority == 3) {
+                highPriorityQueue.poll();
+            }
+            waitingQueue.add(pcb);
+        }else{
+            runningQueue.poll();
+            waitingQueue.add(pcb);
+        }
+    }
+    public void Runing2Ready(PCB pcb){
+        pcb.setState(READY);
+        if(strategy == "MLFQ") {
+            int priority = pcb.getPriority();
+            if (priority == 1) {
+                lowPriorityQueue.poll();
+            } else if (priority == 2) {
+                mediumPriorityQueue.poll();
+            } else if (priority == 3) {
+                highPriorityQueue.poll();
+            }
+            readyQueue.add(pcb);
+        }else{
+            runningQueue.poll();
+            readyQueue.add(pcb);
+        }
+    }
+    public void Waiting2Ready(PCB pcb){
+
+        pcb.setState(READY);
+        pcb.setIr(pcb.getIr()+1);
+
+        waitingQueue.remove(pcb);
+        readyQueue.add(pcb);
     }
 
     @Scheduled(fixedRate = 13000) // 每隔 13 秒执行一次
@@ -98,5 +171,17 @@ public class SideScheduler {
         mediumPriorityQueue.removeAll(toPromote);
         highPriorityQueue.addAll(toPromote);
     }
-
+    @Scheduled(fixedRate = 100) // 每隔 0.1 秒执行一次
+    public void checkIOInterrupt(){ //检测IO是否完成
+        //查询
+        System.out.println("检测IO中断");
+        if(irlIO.peek() != null){       //说明IO触发
+            //处理IO中断
+            //队列中    存储pid
+            int pid = irlIO.poll();
+            PCB pcb = protectedMemory.getPcbTable().get(pid);
+            //修改pcb状态
+            Waiting2Ready(pcb);
+        }
+    }
 }

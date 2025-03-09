@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
 import newOs.kernel.process.scheduler.SideScheduler;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,10 +37,10 @@ public class ProcessExecutionTask implements Runnable{
     // 设备控制表
     //private final LinkedList<DeviceInfo> deviceInfoTable;
 
-    private final HandleISR handleISR;
+    private final newOs.kernel.interrupt.hardwareHandler.ISRHandler ISRHandler;
 
 
-    public ProcessExecutionTask(PCB pcb,ProtectedMemory protectedMemory,HandleISR handleISR,SideScheduler Sscheduler) {
+    public ProcessExecutionTask(PCB pcb, ProtectedMemory protectedMemory, ISRHandler ISRHandler, SideScheduler Sscheduler) {
         this.pcb = pcb;
 
         //暂时用pcb的模块进行模拟
@@ -50,7 +51,7 @@ public class ProcessExecutionTask implements Runnable{
         this.waitingQueue = protectedMemory.getWaitingQueue();
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
-        this.handleISR = handleISR;
+        this.ISRHandler = ISRHandler;
         this.Sscheduler = Sscheduler;
     }
 
@@ -63,7 +64,8 @@ public class ProcessExecutionTask implements Runnable{
             //模拟流水线切换指令边界
             int isSwitchProcess = 0;
 
-            setStratgy();
+            Sscheduler.schedulerProcess(pcb);   //调度进程
+
             //获取当前线程的id
             for (int ir = pcb.getIr(); ir < instructions.length; ir = pcb.getIr()) {
                 String instruction = instructions[ir];
@@ -72,7 +74,7 @@ public class ProcessExecutionTask implements Runnable{
                     executeInstruction(instruction);
                     String peek = irl.peek();
                     if (peek != null) {
-                        handleISR.handlIsrInterruptIO();
+                        ISRHandler.handlIsrInterruptIO();
                     }
                     break;
                 } else {
@@ -84,18 +86,22 @@ public class ProcessExecutionTask implements Runnable{
 
 
                     } else {
-                        // CPU每执行一条指令，都需要去检查 irl 是否有中断信号
+                        //执行完一条指令之后
+                        //检测时间片
+                        pcb.setIr(ir + 1);
                         String peek = irl.peek();
                         if (peek != null) {
-                            // 处理硬件中断信号，CPU去执行中断处理程序了。时间片耗尽也会导致进程切换，isSwitchProcess = 1 表示时间片耗尽导致的进程切换
-                            int i = handleISR.handlIsrInterrupt(pcb);
-                            if (i != 0)
-                                isSwitchProcess = i;
+                            int i = ISRHandler.handlIsrInterrupt(pcb);
+                            if (i != 0) {         //拷贝isSwitchProcess
+                                isSwitchProcess = i; //进行进程的调度切换
+                                //时间片用完,调度到等待队列
+                                Sscheduler.Runing2Ready(pcb);
+                            }
+                            log.info(pcb.getProcessName() + "出让CPU");
+                            // 时间片耗尽导致进程切换
+                            if (isSwitchProcess > 0)
+                                break;
                         }
-                        log.info(pcb.getProcessName() + "出让CPU");
-                        // 时间片耗尽导致进程切换
-                        if (isSwitchProcess > 0)
-                            break;
                     }
                 }
             }
@@ -104,21 +110,7 @@ public class ProcessExecutionTask implements Runnable{
             e.printStackTrace();
         }
     }
-    private void setStratgy() {
 
-        pcb.setState(RUNNING);
-        //需要实现时间片控制
-        if (strategy.equals("RR")) // 时间片轮转
-            pcb.setRemainingTime(3800L);
-        else if (strategy.equals("MLFQ") && pcb.getRemainingTime() < 0)    // 多级反馈队列
-            pcb.setRemainingTime(3800L);
-        //不需要实现时间片控制
-        else if (strategy.equals("FCFS") || strategy.equals("SJF"))   //先来先服务或短作业优先
-            pcb.setRemainingTime(99999999L);
-
-        //调度
-        Sscheduler.schedulerProcess(pcb);
-    }
     private int executeInstruction(String instruction) {
         int isSwitchProcess = 0;
         String [] parts = instruction.split(" ");
@@ -126,6 +118,10 @@ public class ProcessExecutionTask implements Runnable{
         try{
             log.info("当前执行指令：" + instruction);
             switch (command){
+                case "M":
+                    //设置信息
+
+
                 case "A":       //进行逻辑地址的解析
                     int logicAddress = Integer.parseInt(parts[1]);
                     // 8 12 12

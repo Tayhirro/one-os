@@ -44,6 +44,11 @@ public class CmdCallController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail("internal error", "400"));
         }
     }
+
+
+
+
+
     //    @PostMapping("/file")
 //    public ResponseEntity<String> handleFileCommand(@RequestBody FileCommand cmd) {
 //        return fileService.readFile(cmd.getFileName());
