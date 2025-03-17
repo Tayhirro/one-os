@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static newOs.common.processConstant.InstructionConstant.*;
 import static newOs.common.processConstant.processStateConstant.RUNNING;
+import static newOs.common.processConstant.processStateConstant.TERMINATED;
 import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
 
@@ -29,9 +30,7 @@ public class ProcessExecutionTask implements Runnable{
 
 
 
-    private final ConcurrentLinkedQueue<PCB> waitingQueue;
-    private final ConcurrentLinkedQueue<PCB> readyQueue;
-    private final ConcurrentLinkedQueue<PCB> runningQueue;
+
 
 
     // 设备控制表
@@ -48,9 +47,6 @@ public class ProcessExecutionTask implements Runnable{
         this.instructions = pcb.getInstructions();
 
         this.irlTable = protectedMemory.getIrlTable();
-        this.waitingQueue = protectedMemory.getWaitingQueue();
-        this.readyQueue = protectedMemory.getReadyQueue();
-        this.runningQueue = protectedMemory.getRunningQueue();
         this.ISRHandler = ISRHandler;
         this.Sscheduler = Sscheduler;
     }
@@ -143,6 +139,20 @@ public class ProcessExecutionTask implements Runnable{
                     break;
                 case "D":         //硬盘查询中断
                     break;
+                case "Q":
+                    pcb.setIr(0);
+                    pcb.setState(TERMINATED);
+                    pcb.setRemainingTime(-1);
+                    // TODO lyq 释放内存
+//                    mmu.Free(pcb.getRegister());
+//                    pcb.setRegister(-1);
+                    //移出队列
+                    Sscheduler.Finnished(pcb);
+                    break;
+                default :
+                    log.info("Unknown command.");
+                    break;
+
             }
 
         }catch (InterruptedException e) {

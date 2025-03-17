@@ -50,38 +50,33 @@ public class ProcessScheduler {
         this.processExecutionTaskFactory = processExecutionTaskFactory;
         this.ISRHandler = ISRHandler;
     }
-
-
-
-
-
-    public void spanWait(ExecutorService cpuSimulatorExecutor){
-        cpuSimulatorExecutor.submit(() -> {
-            irlTable.put(Thread.currentThread().getId(), new InterruptRequestLine("TIMER_INTERRUPT"));
-            try {
-                while(true) {
-                    Thread.sleep(10);
-                    log.info("running spanWait: " + Thread.currentThread().getId());
-                    long threadId = Thread.currentThread().getId();
-                    InterruptRequestLine irl = irlTable.get(threadId);
-                    if (irl.peek() != null) {       //如果irl有内容，则说明有IO中断
-                        ISRHandler.handlIsrInterruptIO();
-                    }
-                    try {       //一旦有进程就绪，就执行
-                        PCB pcb = readyQueue.poll();
-                        if (pcb != null) {
-                            cpuSimulatorExecutor.submit(processExecutionTaskFactory.createTask(pcb));
-                            //退出spanWait状态
-                            break;
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        });
-    }
+//    public void spanWait(ExecutorService cpuSimulatorExecutor){
+//        cpuSimulatorExecutor.submit(() -> {
+//            irlTable.put(Thread.currentThread().getId(), new InterruptRequestLine("TIMER_INTERRUPT"));
+//            try {
+//                while(true) {
+//                    Thread.sleep(10);
+//                    log.info("running spanWait: " + Thread.currentThread().getId());
+//                    long threadId = Thread.currentThread().getId();
+//                    InterruptRequestLine irl = irlTable.get(threadId);
+//                    if (irl.peek() != null) {       //如果irl有内容，则说明有IO中断
+//                        ISRHandler.handlIsrInterruptIO();
+//                    }
+//                    try {       //一旦有进程就绪，就执行
+//                        PCB pcb = readyQueue.poll();
+//                        if (pcb != null) {
+//                            cpuSimulatorExecutor.submit(processExecutionTaskFactory.createTask(pcb));
+//                            //退出spanWait状态
+//                            break;
+//                        }
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        });
+//    }
 
 }

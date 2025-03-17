@@ -1,10 +1,15 @@
 package newOs.kernel.process.scheduler;
 
 
+import lombok.extern.slf4j.Slf4j;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
+import newOs.kernel.process.ProcessExecutionTask;
+import newOs.kernel.process.ProcessExecutionTaskFactory;
+import newOs.kernel.process.ProcessManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -14,11 +19,13 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import static newOs.common.processConstant.processStateConstant.*;
 import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
 @Component
+@Slf4j
 public class SideScheduler {
     private final ConcurrentLinkedQueue<PCB> readyQueue;
     private final ConcurrentLinkedQueue<PCB> runningQueue;
@@ -29,12 +36,16 @@ public class SideScheduler {
     private final ConcurrentLinkedQueue<PCB> mediumPriorityQueue;
     private final ConcurrentLinkedQueue<PCB> lowPriorityQueue;
 
+    private final PriorityBlockingQueue<PCB> readySJFQueue;
+    private final X86CPUSimulator x86CPUSimulator;
+
 
     private ExecutorService cpuSimulatorExecutor;
     private final ProtectedMemory protectedMemory;
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
     private final ConcurrentLinkedQueue<Integer> irlIO;
 
+    private final ISRHandler isrHandler;
 
     /*
     * 1实现调度下一个进程 ----放入runningQueue
@@ -45,17 +56,26 @@ public class SideScheduler {
 
 
     @Autowired
-    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator) {
+    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler) {
+
+
+
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
         this.waitingQueue = protectedMemory.getWaitingQueue();
         this.highPriorityQueue = protectedMemory.getHighPriorityQueue();
         this.mediumPriorityQueue = protectedMemory.getMediumPriorityQueue();
         this.lowPriorityQueue = protectedMemory.getLowPriorityQueue();
+        this.readySJFQueue = protectedMemory.getReadySJFQueue();
+
 
         this.protectedMemory = protectedMemory;
         this.irlTable = protectedMemory.getIrlTable();
         this.irlIO  = protectedMemory.getIrlIO();
+
+        //用于创建进程
+        this.x86CPUSimulator = x86CPUSimulator;
+        this.isrHandler = isrHandler;
     }
 
 
@@ -68,10 +88,10 @@ public class SideScheduler {
         else if (strategy.equals("MLFQ") && pcb.getRemainingTime() < 0)    // 多级反馈队列
             pcb.setRemainingTime(3800L);
             //不需要实现时间片控制
-        else if (strategy.equals("FCFS") || strategy.equals("SJF"))   //先来先服务或短作业优先
+        else if (strategy.equals("FCFS") || strategy.equals("SJF") || strategy.equals("SRJF"))
             pcb.setRemainingTime(99999999L);
         //多级调度
-        if(strategy == "MLFQ") {
+        if(strategy.equals("MLFQ")) {
             if (pcb.getPriority() == 1) {
                 lowPriorityQueue.add(pcb);
             } else if (pcb.getPriority() == 2) {
@@ -87,58 +107,68 @@ public class SideScheduler {
     }
     // 直接取出readyQueue中的第一个进程
     public void executeNextProcess(){
-
+        ExecutorService cpuSimulatorExecutor = x86CPUSimulator.getExecutor();
+        PCB pcb = readyQueue.poll();
+        if(pcb != null){
+            Ready2Running(pcb);
+            cpuSimulatorExecutor.submit(new ProcessExecutionTask(pcb,protectedMemory,isrHandler,this));
+        }
     }
 
     public void Ready2Running(PCB pcb){
         pcb.setState(RUNNING);
-       if(strategy == "MLFQ") {
+       if(strategy.equals("MLFQ")) {
            int priority = pcb.getPriority();
            if (priority == 1) {
-               lowPriorityQueue.poll();
+               lowPriorityQueue.remove(pcb);
            } else if (priority == 2) {
-               mediumPriorityQueue.poll();
+               mediumPriorityQueue.remove(pcb);
            } else if (priority == 3) {
-               highPriorityQueue.poll();
+               highPriorityQueue.remove(pcb);
            }
            runningQueue.add(pcb);
-       }else{
+       }else if(strategy.equals("SRJF")||strategy.equals("SJF")){
+           readySJFQueue.remove(pcb);
+           runningQueue.add(pcb);
+       }else{  //fcfs,rr
               readyQueue.remove(pcb);
               runningQueue.add(pcb);
-
        }
     }
     public void Runing2Wait(PCB pcb){
         pcb.setState(WAITING);
-        if(strategy == "MLFQ") {
+        if(strategy.equals("MLFQ")) {
             int priority = pcb.getPriority();
             if (priority == 1) {
-                lowPriorityQueue.poll();
+                lowPriorityQueue.remove(pcb);
             } else if (priority == 2) {
-                mediumPriorityQueue.poll();
+                mediumPriorityQueue.remove(pcb);
             } else if (priority == 3) {
-                highPriorityQueue.poll();
+                highPriorityQueue.remove(pcb);
             }
             waitingQueue.add(pcb);
         }else{
-            runningQueue.poll();
+            runningQueue.remove(pcb);
             waitingQueue.add(pcb);
         }
     }
     public void Runing2Ready(PCB pcb){
         pcb.setState(READY);
-        if(strategy == "MLFQ") {
+        if(strategy.equals("MLFQ")) {
             int priority = pcb.getPriority();
             if (priority == 1) {
-                lowPriorityQueue.poll();
+                lowPriorityQueue.remove(pcb);
             } else if (priority == 2) {
-                mediumPriorityQueue.poll();
+                mediumPriorityQueue.remove(pcb);
             } else if (priority == 3) {
-                highPriorityQueue.poll();
+                highPriorityQueue.remove(pcb);
             }
             readyQueue.add(pcb);
-        }else{
-            runningQueue.poll();
+        }else if(strategy.equals("SRJF")){  //SRJF
+            runningQueue.remove(pcb);
+            readySJFQueue.add(pcb);
+        }else{               //rr
+            runningQueue.remove(pcb);
             readyQueue.add(pcb);
         }
     }
@@ -146,10 +176,19 @@ public class SideScheduler {
 
         pcb.setState(READY);
         pcb.setIr(pcb.getIr()+1);
-
-        waitingQueue.remove(pcb);
-        readyQueue.add(pcb);
+        if(strategy.equals("SRJF") || strategy.equals("SJF")) {  //SRJF
+            waitingQueue.remove(pcb);
+            readySJFQueue.add(pcb);
+        }else{
+            waitingQueue.remove(pcb);
+            readyQueue.add(pcb);
+        }
     }
+    public void Finnished(PCB pcb){
+        runningQueue.remove(pcb);
+        log.info(pcb.getProcessName() + "：" + "执行完成，***进程结束***");
+    }
+
 
     @Scheduled(fixedRate = 13000) // 每隔 13 秒执行一次
     public void boostPriority() {

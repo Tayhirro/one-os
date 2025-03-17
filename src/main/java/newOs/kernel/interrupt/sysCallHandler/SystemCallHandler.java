@@ -39,7 +39,6 @@ public class SystemCallHandler implements ISR<InterruptSysCallInfo> {
                     // 调用 ProcessManager 创建进程，并返回相应的 ProcessInfoImpl
                     return (InterruptSysCallInfo) processManager.createProcess(processInfo.getName(),processInfo.getArgs(),processInfo.getInstructions());
                 case EXECUTE_PROCESS:
-                    System.out.println("execute process1");
                     //return processManager.executeProcess(args.getInt("pid"));
                     PCB pcb = processManager.getPcbTable().get(getPid(processInfo.getName()));
                     processManager.executeProcess(pcb);

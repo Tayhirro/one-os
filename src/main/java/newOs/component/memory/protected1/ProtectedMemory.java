@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 
 /**
@@ -36,10 +37,16 @@ public class ProtectedMemory {
     // 等待队列 --内存阻塞队列
     private ConcurrentLinkedQueue<PCB> waitingQueue;
 
+    //sjf队列
+    private final PriorityBlockingQueue<PCB> readySJFQueue;
+
 
     private final ConcurrentLinkedQueue<PCB> highPriorityQueue;
     private final ConcurrentLinkedQueue<PCB> mediumPriorityQueue;
     private final ConcurrentLinkedQueue<PCB> lowPriorityQueue;
+
+
+
 
     //中断请求表
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
@@ -59,9 +66,20 @@ public class ProtectedMemory {
         readyQueue = new ConcurrentLinkedQueue<>();
         waitingQueue = new ConcurrentLinkedQueue<>();
 
+        readySJFQueue = new PriorityBlockingQueue<>(10, (o1, o2) -> {
+            if (o1.getExpectedTime() > o2.getExpectedTime()) {
+                return 1;
+            } else if (o1.getExpectedTime() < o2.getExpectedTime()) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
+
         highPriorityQueue = new ConcurrentLinkedQueue<>();
         mediumPriorityQueue = new ConcurrentLinkedQueue<>();
         lowPriorityQueue = new ConcurrentLinkedQueue<>();
         irlIO = new ConcurrentLinkedQueue<>();
+
     }
 }

@@ -50,20 +50,22 @@ public class bootLoader implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         // 通过 protectedMemory 访问共享资源
-        ConcurrentHashMap<Long, InterruptRequestLine> irlTable =
-                protectedMemory.getIrlTable();
 
         ExecutorService executor = x86CPUSimulator.getExecutor();
-        // 创建 CountDownLatch 计数器，初始值为 4（4 个线程）
-        CountDownLatch latch = new CountDownLatch(4);
+        // 创建 CountDownLatch 计数器，初始值为 1（1 个线程）
+        CountDownLatch latch = new CountDownLatch(1);
         // 初始化逻辑
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 1; i++) {
             executor.submit(() -> {
                 long threadId = Thread.currentThread().getId();
-                irlTable.put(threadId, new InterruptRequestLine("TIMER_INTERRUPT"));
+                protectedMemory.getIrlTable().put(threadId, new InterruptRequestLine("TIMER_INTERRUPT"));
                 try {
                     Thread.sleep(10);
                     System.out.println("initializing" + Thread.currentThread().getId());
+                    //打印irltable
+                    for(Long key : protectedMemory.getIrlTable().keySet()){
+                        System.out.println("key: " + key + " value: " + protectedMemory.getIrlTable().get(key));
+                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }finally {
@@ -120,9 +122,11 @@ public class bootLoader implements ApplicationRunner {
         int pid2 = getPid("process2");
         int pid3 = getPid("process3");
 
-        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,3, inst1,-1,-1,-1);
-        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,3, inst2,-1,-1,-1);
-        PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,3, inst3,-1,-1,-1);
+
+
+        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst1,-1,-1,-1);
+        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst2,-1,-1,-1);
+        PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1);
 
 
         //放置process到PCB表中
@@ -132,6 +136,8 @@ public class bootLoader implements ApplicationRunner {
 
 
         processManageServiceImpl.executeProcess("process1");
+        processManageServiceImpl.executeProcess("process2");
+        processManageServiceImpl.executeProcess("process3");
 
     }
 }

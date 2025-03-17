@@ -37,8 +37,8 @@ public class X86CPUSimulator {
         //registers = registerFactory.GenerateBaseConfig();
 
 
-        //模拟4核
-        this.executor = Executors.newFixedThreadPool(4); // 初始化线程池
+        //模拟1核
+        this.executor = Executors.newFixedThreadPool(1); // 初始化线程池
     }
     public ExecutorService getExecutor() {
         return executor;

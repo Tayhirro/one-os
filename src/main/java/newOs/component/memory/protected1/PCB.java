@@ -34,6 +34,9 @@ public class PCB {
     //段表大小
     private int segmentTableSize;
 
+    //进程创建时间
+    private long timeStamp;
+
     // 剩余可执行时间，单位ms
     private long remainingTime;
     // 预期运行时间

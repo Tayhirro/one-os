@@ -44,6 +44,9 @@ public class ProcessManager{
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
         this.waitingQueue = protectedMemory.getWaitingQueue();
+
+
+
         this.protectedMemory = protectedMemory;
         this.x86CPUSimulator = x86CPUSimulator;
         this.processExecutionTaskFactory = processExecutionTaskFactory;
@@ -54,7 +57,11 @@ public class ProcessManager{
         // 创建进程
         int pid = ProcessTool.getPid(processName);
         // 创建进程pcb，放进pcbTable
-        PCB pcb = new PCB(pid, processName, 0, -1, CREATED, -1, -1, -1, -1,-1,-1,3,null,-1,-1,-1);
+
+        //创建时间戳
+        long timestamp = System.currentTimeMillis();
+        PCB pcb = new PCB(pid, processName, 0, -1, CREATED, -1, -1, -1, -1, timestamp, -1, -1, 3, null, -1, -1, -1);
+
         pcbTable.put(pid, pcb);
         LinkedList<String> list = new LinkedList<>();
         long expectedTime = 0;
@@ -88,6 +95,7 @@ public class ProcessManager{
 //        pcb.setRegister(pageTable);
         ThreadPoolExecutor cpuSimulatorExecutor = (ThreadPoolExecutor) x86CPUSimulator.getExecutor();
         int idleThreads = cpuSimulatorExecutor.getMaximumPoolSize() - cpuSimulatorExecutor.getActiveCount();
+
         if(idleThreads > 0) {
             //有空闲进程
             ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
@@ -95,6 +103,7 @@ public class ProcessManager{
             cpuSimulatorExecutor.submit(processExecutionTask);
         }else{
             //没有空闲进程
+            System.out.println("进程" + pcb.getPid() + "进入就绪队列");
             readyQueue.add(pcb);
         }
     }

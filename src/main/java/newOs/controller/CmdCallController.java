@@ -17,7 +17,7 @@ import java.util.UUID;
 
 
 @RestController
-@RequestMapping("/mini-os/cmd/process")
+@RequestMapping("/one-os/cmd/process")
 public class CmdCallController {
 
 
