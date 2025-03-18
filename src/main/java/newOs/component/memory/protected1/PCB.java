@@ -54,4 +54,7 @@ public class PCB {
     private int swapOutTime;
 
     private int pageFaultRate;
+
+    //上一次的核心id
+    private Integer coreId;
 }

@@ -55,6 +55,8 @@ public class ProcessExecutionTask implements Runnable{
     public void run() {
         try {
             InterruptRequestLine irl = irlTable.get(Thread.currentThread().getId());
+            //对于run， coreID = executeservice-i
+
 
             //0表示未切换，1表示切换后放进就绪队列，2表示切换后放进等待队列
             //模拟流水线切换指令边界
@@ -101,7 +103,7 @@ public class ProcessExecutionTask implements Runnable{
                     }
                 }
             }
-            Sscheduler.executeNextProcess();
+            Sscheduler.executeNextProcess(pcb.getCoreId());
         }catch (Exception e){
             e.printStackTrace();
         }

@@ -24,7 +24,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class X86CPUSimulator {
-    private ExecutorService executor;
+    private final ExecutorService[] executors;
+
     private MMU mmu;
     //private Map<RegisterType, AbstractRegister> registers = new HashMap<>();
     //private ALU alu; 暂时没实现
@@ -36,11 +37,15 @@ public class X86CPUSimulator {
         //创建寄存器组
         //registers = registerFactory.GenerateBaseConfig();
 
+        this.executors = new ExecutorService[4];
 
-        //模拟1核
-        this.executor = Executors.newFixedThreadPool(1); // 初始化线程池
+        //模拟N核
+        for(int i= 0; i < 4; i++) {
+            executors[i] = Executors.newFixedThreadPool(1);
+        }
+
     }
-    public ExecutorService getExecutor() {
-        return executor;
+    public ExecutorService[] getExecutors() {
+        return executors;
     }
 }

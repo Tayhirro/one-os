@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -106,14 +107,33 @@ public class SideScheduler {
 
     }
     // 直接取出readyQueue中的第一个进程
-    public void executeNextProcess(){
-        ExecutorService cpuSimulatorExecutor = x86CPUSimulator.getExecutor();
-        PCB pcb = readyQueue.poll();
-        if(pcb != null){
-            Ready2Running(pcb);
-            cpuSimulatorExecutor.submit(new ProcessExecutionTask(pcb,protectedMemory,isrHandler,this));
+    public void executeNextProcess(int coreId) {
+        ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
+        PCB matchedPcb = null;
+
+        // 遍历 readyQueue 找到第一个 pcb.coreId == coreId 的进程
+        Iterator<PCB> it = readyQueue.iterator();
+        while (it.hasNext()) {
+            PCB pcb = it.next();
+            // 注意空指针判断
+            if (pcb.getCoreId() != null && pcb.getCoreId() == coreId) {
+                matchedPcb = pcb;
+                it.remove(); // 从队列里移除
+                break;
+            }
+        }
+
+        // 如果找到了，就执行
+        if (matchedPcb != null) {
+            Ready2Running(matchedPcb);
+            cpuSimulatorExecutors[coreId].submit(
+                    new ProcessExecutionTask(matchedPcb, protectedMemory, isrHandler, this)
+            );
+        } else {
+            System.out.println("队列中没有匹配 coreId=" + coreId + " 的进程。");
         }
     }
+
 
     public void Ready2Running(PCB pcb){
         pcb.setState(RUNNING);

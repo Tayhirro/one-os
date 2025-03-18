@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ProcessScheduler {
     private final Queue<PCB> readyQueue;
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
-    private ExecutorService cpuSimulatorExecutor;
+    private ExecutorService[] cpuSimulatorExecutors;
     private final ProtectedMemory protectedMemory;
     private final ProcessExecutionTaskFactory processExecutionTaskFactory;
     private final ISRHandler ISRHandler;
@@ -46,7 +46,7 @@ public class ProcessScheduler {
         this.protectedMemory = protectedMemory;
         this.readyQueue = protectedMemory.getReadyQueue();
         this.irlTable = protectedMemory.getIrlTable();
-        this.cpuSimulatorExecutor = x86CPUSimulator.getExecutor();
+        this.cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
         this.processExecutionTaskFactory = processExecutionTaskFactory;
         this.ISRHandler = ISRHandler;
     }

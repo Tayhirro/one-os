@@ -51,27 +51,30 @@ public class bootLoader implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         // 通过 protectedMemory 访问共享资源
 
-        ExecutorService executor = x86CPUSimulator.getExecutor();
+        ExecutorService[] executors = x86CPUSimulator.getExecutors();
         // 创建 CountDownLatch 计数器，初始值为 1（1 个线程）
         CountDownLatch latch = new CountDownLatch(1);
         // 初始化逻辑
-        for (int i = 0; i < 1; i++) {
-            executor.submit(() -> {
-                long threadId = Thread.currentThread().getId();
-                protectedMemory.getIrlTable().put(threadId, new InterruptRequestLine("TIMER_INTERRUPT"));
-                try {
-                    Thread.sleep(10);
-                    System.out.println("initializing" + Thread.currentThread().getId());
-                    //打印irltable
-                    for(Long key : protectedMemory.getIrlTable().keySet()){
-                        System.out.println("key: " + key + " value: " + protectedMemory.getIrlTable().get(key));
+        for(int t = 0; t<4; t++) {
+
+            for (int i = 0; i < 1; i++) {
+                executors[t].submit(() -> {
+                    long threadId = Thread.currentThread().getId();
+                    protectedMemory.getIrlTable().put(threadId, new InterruptRequestLine("TIMER_INTERRUPT"));
+                    try {
+                        Thread.sleep(10);
+                        System.out.println("initializing" + Thread.currentThread().getId());
+                        //打印irltable
+                        for (Long key : protectedMemory.getIrlTable().keySet()) {
+                            System.out.println("key: " + key + " value: " + protectedMemory.getIrlTable().get(key));
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        latch.countDown();  // 线程完成后，计数器减 1
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }finally {
-                    latch.countDown();  // 线程完成后，计数器减 1
-                }
-            });
+                });
+            }
         }
         // 等待所有线程初始化完成
         try {
@@ -124,9 +127,9 @@ public class bootLoader implements ApplicationRunner {
 
 
 
-        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst1,-1,-1,-1);
-        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst2,-1,-1,-1);
-        PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1);
+        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst1,-1,-1,-1,-1);
+        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst2,-1,-1,-1,-1);
+        PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
 
 
         //放置process到PCB表中

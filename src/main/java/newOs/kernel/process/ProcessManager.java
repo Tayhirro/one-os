@@ -60,7 +60,7 @@ public class ProcessManager{
 
         //创建时间戳
         long timestamp = System.currentTimeMillis();
-        PCB pcb = new PCB(pid, processName, 0, -1, CREATED, -1, -1, -1, -1, timestamp, -1, -1, 3, null, -1, -1, -1);
+        PCB pcb = new PCB(pid, processName, 0, -1, CREATED, -1, -1, -1, -1, timestamp, -1, -1, 3, null, -1, -1, -1,-1);
 
         pcbTable.put(pid, pcb);
         LinkedList<String> list = new LinkedList<>();
@@ -93,19 +93,25 @@ public class ProcessManager{
         //
 //        int pageTable = mmu.Allocate(pcb.getPid(), pcb.getSize());
 //        pcb.setRegister(pageTable);
-        ThreadPoolExecutor cpuSimulatorExecutor = (ThreadPoolExecutor) x86CPUSimulator.getExecutor();
-        int idleThreads = cpuSimulatorExecutor.getMaximumPoolSize() - cpuSimulatorExecutor.getActiveCount();
-
-        if(idleThreads > 0) {
-            //有空闲进程
-            ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
-            //唤醒调度器
-            cpuSimulatorExecutor.submit(processExecutionTask);
-        }else{
-            //没有空闲进程
-            System.out.println("进程" + pcb.getPid() + "进入就绪队列");
-            readyQueue.add(pcb);
+        ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
+        for(int i=0;i<cpuSimulatorExecutors.length;i++){
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) cpuSimulatorExecutors[i];
+            int idleThreads = executor.getCorePoolSize() - executor.getActiveCount();
+            if(idleThreads > 0) {
+                //有空闲进程
+                ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
+                //设置cordid
+                pcb.setCoreId(i);
+                //唤醒调度器
+                cpuSimulatorExecutors[i].submit(processExecutionTask);
+                break;
+            }else{  //没有就继续
+                continue;
+            }
         }
+        //循环完都没有
+        System.out.println("进程" + pcb.getPid() + "进入就绪队列");
+        readyQueue.add(pcb);
     }
 
 }

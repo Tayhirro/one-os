@@ -34,6 +34,9 @@ public class ProtectedMemory {
     private  ConcurrentLinkedQueue<PCB> runningQueue;
     // 就绪队列  --低级调度就绪队列
     private  ConcurrentLinkedQueue<PCB> readyQueue;
+
+
+
     // 等待队列 --内存阻塞队列
     private ConcurrentLinkedQueue<PCB> waitingQueue;
 
