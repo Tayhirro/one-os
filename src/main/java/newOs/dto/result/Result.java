@@ -19,8 +19,11 @@ public class Result implements Serializable{
 
     private Boolean success;    //是否成功
     private String Message;
+
+    //data可能为list 或者 object
     private Object data;
     private Long total;
+
     private String code;
 
 

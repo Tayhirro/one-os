@@ -1,13 +1,15 @@
 package newOs.component.cpu;
 
 
+import lombok.Data;
 import lombok.Generated;
 import lombok.Getter;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import lombok.RequiredArgsConstructor;
 import newOs.common.cpuConstant.RegisterType;
@@ -17,14 +19,18 @@ import newOs.component.cpu.Registers.AbstractRegister;
 import newOs.component.cpu.Registers.AbstractRegisterFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
+import org.springframework.data.relational.core.sql.In;
 import org.springframework.stereotype.Component;
 
 
 
 
 @Component
+@Data
 public class X86CPUSimulator {
     private final ExecutorService[] executors;
+    private final List<AtomicInteger> executorServiceReady = Collections.synchronizedList(new ArrayList<>());
+
 
     private MMU mmu;
     //private Map<RegisterType, AbstractRegister> registers = new HashMap<>();
@@ -37,11 +43,12 @@ public class X86CPUSimulator {
         //创建寄存器组
         //registers = registerFactory.GenerateBaseConfig();
 
-        this.executors = new ExecutorService[4];
+        this.executors = new ExecutorService[5];
 
         //模拟N核
-        for(int i= 0; i < 4; i++) {
-            executors[i] = Executors.newFixedThreadPool(1);
+        for(int i= 0; i <=4; i++) {
+            this.executors[i] = Executors.newFixedThreadPool(1);        //实际上0不会被用到
+            executorServiceReady.add(new AtomicInteger(0));         //添加计数
         }
 
     }

@@ -81,7 +81,15 @@ public class SideScheduler {
 
 
     public void schedulerProcess(PCB pcb){
-        readyQueue.removeIf(p->p.equals(pcb));
+        if(strategy.equals("SJF")||strategy.equals("SRJF")) {
+            readySJFQueue.removeIf(p -> p.equals(pcb));
+        }else {
+            readyQueue.removeIf(p -> p.equals(pcb));
+        }
+        //自减
+        x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).decrementAndGet();
+        //自减
+
         pcb.setState(RUNNING);
         //需要实现时间片控制
         if (strategy.equals("RR")) // 时间片轮转
@@ -106,20 +114,26 @@ public class SideScheduler {
 
 
     }
-    // 直接取出readyQueue中的第一个进程
+    // 中转操作-取出pcb
     public void executeNextProcess(int coreId) {
         ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
         PCB matchedPcb = null;
-
-        // 遍历 readyQueue 找到第一个 pcb.coreId == coreId 的进程
-        Iterator<PCB> it = readyQueue.iterator();
+        Iterator<PCB> it;
+        PCB firstCorePcb = null;
+        if(strategy.equals("SJF")||strategy.equals("SRJF")) {
+            it = readySJFQueue.iterator();
+        }else {
+            // 遍历 readyQueue 找到第一个 pcb.coreId == coreId 的进程
+            it = readyQueue.iterator();
+        }
         while (it.hasNext()) {
             PCB pcb = it.next();
             // 注意空指针判断
             if (pcb.getCoreId() != null && pcb.getCoreId() == coreId) {
                 matchedPcb = pcb;
-                it.remove(); // 从队列里移除
                 break;
+            }else if(pcb.getCoreId() == -1 && firstCorePcb == null){
+                firstCorePcb  = pcb;
             }
         }
 
@@ -131,11 +145,20 @@ public class SideScheduler {
             );
         } else {
             System.out.println("队列中没有匹配 coreId=" + coreId + " 的进程。");
+            //如果有-1的，也就是刚进来的进程，也执行
+            if(firstCorePcb != null) {
+                System.out.println("执行刚进来的进程");
+                cpuSimulatorExecutors[coreId].submit(
+                        new ProcessExecutionTask(firstCorePcb , protectedMemory, isrHandler, this)
+                );
+            }
+
         }
     }
 
 
     public void Ready2Running(PCB pcb){
+        System.out.println("进程" + pcb.getPid() + "进入运行队列");
         pcb.setState(RUNNING);
        if(strategy.equals("MLFQ")) {
            int priority = pcb.getPriority();
@@ -154,6 +177,7 @@ public class SideScheduler {
               readyQueue.remove(pcb);
               runningQueue.add(pcb);
        }
+       x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).decrementAndGet();
     }
     public void Runing2Wait(PCB pcb){
         pcb.setState(WAITING);
@@ -191,6 +215,7 @@ public class SideScheduler {
             runningQueue.remove(pcb);
             readyQueue.add(pcb);
         }
+        x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).incrementAndGet();
     }
     public void Waiting2Ready(PCB pcb){
 
@@ -203,6 +228,7 @@ public class SideScheduler {
             waitingQueue.remove(pcb);
             readyQueue.add(pcb);
         }
+        x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).incrementAndGet();
     }
     public void Finnished(PCB pcb){
         runningQueue.remove(pcb);
@@ -243,4 +269,12 @@ public class SideScheduler {
             Waiting2Ready(pcb);
         }
     }
+    @Scheduled(fixedRate = 1000) // 每隔 1 秒执行一次
+    //负载均衡
+    public void loadBalance(){
+        //进行判断
+
+    }
+
+
 }

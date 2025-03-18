@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static newOs.common.processConstant.processStateConstant.CREATED;
+import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
 @Component
 @Data
@@ -29,6 +30,7 @@ public class ProcessManager{
     private final Queue<PCB> readyQueue;
     private final Queue<PCB> runningQueue;
     private final Queue<PCB> waitingQueue;
+    private final Queue<PCB> readySJFQueue;
     private final ProtectedMemory protectedMemory;
     private final X86CPUSimulator x86CPUSimulator;
     private final ProcessExecutionTaskFactory processExecutionTaskFactory;
@@ -44,7 +46,7 @@ public class ProcessManager{
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
         this.waitingQueue = protectedMemory.getWaitingQueue();
-
+        this.readySJFQueue = protectedMemory.getReadySJFQueue();
 
 
         this.protectedMemory = protectedMemory;
@@ -91,27 +93,46 @@ public class ProcessManager{
 
     public void executeProcess(PCB pcb){
         //
-//        int pageTable = mmu.Allocate(pcb.getPid(), pcb.getSize());
-//        pcb.setRegister(pageTable);
-        ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
-        for(int i=0;i<cpuSimulatorExecutors.length;i++){
-            ThreadPoolExecutor executor = (ThreadPoolExecutor) cpuSimulatorExecutors[i];
-            int idleThreads = executor.getCorePoolSize() - executor.getActiveCount();
-            if(idleThreads > 0) {
-                //有空闲进程
-                ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
-                //设置cordid
-                pcb.setCoreId(i);
-                //唤醒调度器
-                cpuSimulatorExecutors[i].submit(processExecutionTask);
-                break;
-            }else{  //没有就继续
-                continue;
+        try{
+    //        int pageTable = mmu.Allocate(pcb.getPid(), pcb.getSize());
+    //        pcb.setRegister(pageTable);
+            ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
+            int i = 1;
+            for(;i<cpuSimulatorExecutors.length;i++){
+                ThreadPoolExecutor executor = (ThreadPoolExecutor) cpuSimulatorExecutors[i];
+                int idleThreads = executor.getCorePoolSize() - executor.getActiveCount();
+                if(idleThreads > 0) {
+                    //有空闲进程
+                    ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
+                    //设置cordid
+                    pcb.setCoreId(i);
+                    //唤醒调度器
+                    cpuSimulatorExecutors[i].submit(processExecutionTask);
+                    break;
+                }else{  //没有就继续
+                    continue;
+                }
+            }
+            //循环完都没有
+            if(i == cpuSimulatorExecutors.length) {
+                //加入就绪队列
+                System.out.println("进程" + pcb.getPid() + "进入就绪队列");
+                if(strategy.equals("SJRF")||strategy.equals("SJF")){
+                    readySJFQueue.add(pcb);
+                }else{
+                    readyQueue.add(pcb);
+                }
+
+                x86CPUSimulator.getExecutorServiceReady().get(0).incrementAndGet(); //进行安全自增
+            }
+        } finally { //延时一段用于 activecount的数值更新
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
-        //循环完都没有
-        System.out.println("进程" + pcb.getPid() + "进入就绪队列");
-        readyQueue.add(pcb);
+
     }
 
 }

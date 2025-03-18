@@ -50,7 +50,6 @@ public class ProtectedMemory {
 
 
 
-
     //中断请求表
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
 

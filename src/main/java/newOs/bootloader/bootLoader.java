@@ -52,11 +52,10 @@ public class bootLoader implements ApplicationRunner {
         // 通过 protectedMemory 访问共享资源
 
         ExecutorService[] executors = x86CPUSimulator.getExecutors();
-        // 创建 CountDownLatch 计数器，初始值为 1（1 个线程）
-        CountDownLatch latch = new CountDownLatch(1);
+        // 创建 CountDownLatch 计数器，初始值为 4（4 个线程）
+        CountDownLatch latch = new CountDownLatch(4);
         // 初始化逻辑
-        for(int t = 0; t<4; t++) {
-
+        for(int t = 1; t<=4; t++) {
             for (int i = 0; i < 1; i++) {
                 executors[t].submit(() -> {
                     long threadId = Thread.currentThread().getId();
@@ -107,6 +106,18 @@ public class bootLoader implements ApplicationRunner {
                 "A 10240",
                 "C 1000",
                 "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
                 "Q"
         };
         String[] inst2 = {
@@ -114,33 +125,60 @@ public class bootLoader implements ApplicationRunner {
                 "C 500",
                 "A 1024",
                 "C 1000",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
                 "Q"
         };
         String[] inst3 = {
                 "M 10",
                 "C 1000",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
+                "C 1000",
+                "A 10240",
                 "Q"
         };
         int pid1 = getPid("process1");
         int pid2 = getPid("process2");
         int pid3 = getPid("process3");
+        int pid4 = getPid("process4");
+        int pid5 = getPid("process5");
+
 
 
 
         PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst1,-1,-1,-1,-1);
         PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst2,-1,-1,-1,-1);
         PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
+        PCB pcb4 = new PCB(pid4, "process4", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
+        PCB pcb5 = new PCB(pid5, "process5", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
 
 
         //放置process到PCB表中
         protectedMemory.getPcbTable().put(pid1, pcb1);
         protectedMemory.getPcbTable().put(pid2, pcb2);
         protectedMemory.getPcbTable().put(pid3, pcb3);
+        protectedMemory.getPcbTable().put(pid4, pcb4);
+        protectedMemory.getPcbTable().put(pid5, pcb5);
 
 
         processManageServiceImpl.executeProcess("process1");
         processManageServiceImpl.executeProcess("process2");
         processManageServiceImpl.executeProcess("process3");
+        processManageServiceImpl.executeProcess("process4");
+        processManageServiceImpl.executeProcess("process5");
 
     }
 }
