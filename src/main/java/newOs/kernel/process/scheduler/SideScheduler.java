@@ -148,6 +148,11 @@ public class SideScheduler {
             //如果有-1的，也就是刚进来的进程，也执行
             if(firstCorePcb != null) {
                 System.out.println("执行刚进来的进程");
+                firstCorePcb.setCoreId(coreId);
+                //
+                x86CPUSimulator.getExecutorServiceReady().get(coreId).incrementAndGet();
+                x86CPUSimulator.getExecutorServiceReady().get(0).decrementAndGet();
+                //
                 cpuSimulatorExecutors[coreId].submit(
                         new ProcessExecutionTask(firstCorePcb , protectedMemory, isrHandler, this)
                 );
@@ -270,11 +275,68 @@ public class SideScheduler {
         }
     }
     @Scheduled(fixedRate = 1000) // 每隔 1 秒执行一次
-    //负载均衡
-    public void loadBalance(){
-        //进行判断
+    public void loadBalance() {
+        // executorServiceReady: 其中第0个一般可能是“新进/未分配”的数量，
+        // 后续1~n个表示各个核心的负载统计(ready中的PCB数量、或者其他衡量标准)
+        // 先把这几个 AtomicInteger 的值取出来
+        int numberOfCores = x86CPUSimulator.getExecutors().length;  // 假设=5
+        List<Integer> loads = new ArrayList<>(numberOfCores);
+        for (int coreId = 1; coreId < numberOfCores; coreId++) {
+            loads.add(x86CPUSimulator.getExecutorServiceReady().get(coreId).get());
+        }
 
+        // 找到最大负载和最小负载的核心
+        int maxLoad = -1;
+        int maxCoreId = -1;
+        int minLoad = Integer.MAX_VALUE;
+        int minCoreId = -1;
+        for (int i = 0; i < loads.size(); i++) {
+            if (loads.get(i) > maxLoad) {
+                maxLoad = loads.get(i);
+                maxCoreId = i;
+            }
+            if (loads.get(i) < minLoad) {
+                minLoad = loads.get(i);
+                minCoreId = i;
+            }
+        }
+
+        // 设定一个差值阈值，比如：差值 > 2 就做负载均衡
+        int THRESHOLD = 2;
+        if ((maxLoad - minLoad) > THRESHOLD) {
+            // 计算应该搬多少个进程过来，可以是一半/三分之一等策略
+            int moveCount = (maxLoad - minLoad) / 2;
+            if (moveCount <= 0) {
+                return;  // 不需要搬动
+            }
+
+            log.info("开始执行负载均衡: 将从Core[{}]转移 {} 个任务到Core[{}]", maxCoreId, moveCount, minCoreId);
+
+            // 需要遍历 readyQueue，或者你的 SJFQueue/MLFQ 中相应的队列
+            // 以找到核心是 maxCoreId 的 PCB，然后重新分配给 minCoreId。
+            // 注意：这里仅演示从 readyQueue 里移动，若你还有 SRJF/MLFQ 等其他队列也类似。
+            int moved = 0;
+            if(strategy.equals("SJF")||strategy.equals("SRJF")) {
+                //
+            }else{
+                for (PCB pcb : readyQueue) {
+                    // 如果这个 pcb 的 coreId 正好是 maxCoreId，则把它分给 minCoreId
+                    if (pcb.getCoreId() == maxCoreId) {
+                        pcb.setCoreId(minCoreId);
+                        // 更新计数
+                        x86CPUSimulator.getExecutorServiceReady().get(maxCoreId).decrementAndGet();
+                        x86CPUSimulator.getExecutorServiceReady().get(minCoreId).incrementAndGet();
+
+                        moved++;
+                        if (moved >= moveCount) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
+
 
 
 }

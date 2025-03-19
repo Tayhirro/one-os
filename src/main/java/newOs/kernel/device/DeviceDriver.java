@@ -1,12 +1,14 @@
 package newOs.kernel.device;
 
 
+import newOs.component.memory.protected1.PCB;
+import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
+import newOs.dto.resp.DeviceManage.DevicePCBQueryAllRespDTO;
 import newOs.dto.resp.DeviceManage.DeviceQueryAllRespDTO;
+import org.springframework.scheduling.annotation.Scheduled;
 
 public interface DeviceDriver {
-    void add(String deviceName);
-    void delete(String deviceName);
-    void shutdownAll();
-    void shutdown(String deviceName);
-    DeviceQueryAllRespDTO queryAllDeviceInfo();
+    DeviceInfoReturnImplDTO add(PCB pcb);
+    DevicePCBQueryAllRespDTO queryAllDeviceInfo();
+    DeviceInfoReturnImplDTO releaseDevice();
 }

@@ -122,7 +122,7 @@ public class ProcessManager{
                     readyQueue.add(pcb);
                 }
 
-                x86CPUSimulator.getExecutorServiceReady().get(0).incrementAndGet(); //进行安全自增
+                x86CPUSimulator.getExecutorServiceReady().get(0).incrementAndGet(); //进行自增
             }
         } finally { //延时一段用于 activecount的数值更新
             try {

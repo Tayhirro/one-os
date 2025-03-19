@@ -5,9 +5,11 @@ public class InstructionConstant {
     public static final String C = "C";
     // K time （I/O指令，键盘输入，时长time）
     public static final String D = "D";
-    public static final String R = "R";
+    public static final String OPEN = "OPEN"; //打开文件
+    public static final String CLOSE = "CLOSE"; //关闭文件
+    public static final String READ = "READ";
     // W filename time size （写文件，时长，文件大小size）
-    public static final String W = "W";
+    public static final String WRITE = "WRITE";
     // M block 进程占用内存空间 （资源需求声明）
     public static final String M = "M";
     // Y number 进程的优先数 （调度参数声明，优先级）

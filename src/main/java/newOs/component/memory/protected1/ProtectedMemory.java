@@ -4,6 +4,7 @@ package newOs.component.memory.protected1;
 import lombok.Data;
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
+import newOs.kernel.device.DeviceDriver;
 import newOs.kernel.interrupt.ISR;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,9 @@ public class ProtectedMemory {
     private final ConcurrentLinkedQueue<PCB> mediumPriorityQueue;
     private final ConcurrentLinkedQueue<PCB> lowPriorityQueue;
 
+    //设备队列
+    private final ConcurrentLinkedQueue<DeviceDriver> deviceQueue;
+
 
 
     //中断请求表
@@ -82,6 +86,9 @@ public class ProtectedMemory {
         mediumPriorityQueue = new ConcurrentLinkedQueue<>();
         lowPriorityQueue = new ConcurrentLinkedQueue<>();
         irlIO = new ConcurrentLinkedQueue<>();
+
+        
+        deviceQueue = new ConcurrentLinkedQueue<>();
 
     }
 }

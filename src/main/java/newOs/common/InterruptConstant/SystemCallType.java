@@ -13,7 +13,10 @@ public enum SystemCallType {
     READ_FILE(4), // 读取文件
     WRITE_FILE(5), // 写入文件
     ALLOCATE_MEMORY(6), // 分配内存
-    DEALLOCATE_MEMORY(7); // 释放内存
+    DEALLOCATE_MEMORY(7), // 释放内存
+    OPEN_FILE(8), // 打开文件
+    CLOSE_FILE(9); // 关闭文件
+
 
     private final int syscallNumber;
     SystemCallType(int syscallNumber) {

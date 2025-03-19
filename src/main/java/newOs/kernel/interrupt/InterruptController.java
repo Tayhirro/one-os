@@ -31,9 +31,9 @@ public class InterruptController {
 
 
 
-    public InterruptSysCallInfo triggerSystemCall(ProcessInfoImplDTO processInfo) {    //对processInfo的处理
+    public InterruptSysCallInfo triggerSystemCall(InterruptSysCallInfo sysCallInfo) {    //对系统中断的处理
         //默认是0x80，直接调用SytemCallHandler
-        InterruptInfo interruptInfo = IDT.get(SYSTEM_CALL).execute(processInfo);
+        InterruptInfo interruptInfo = IDT.get(SYSTEM_CALL).execute(sysCallInfo);
         return (InterruptSysCallInfo) interruptInfo;
     }
     public void triggerTimer(TimerInfo timerInfo) {

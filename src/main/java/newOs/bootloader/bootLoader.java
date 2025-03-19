@@ -5,6 +5,8 @@ import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.kernel.device.DeviceDriver;
+import newOs.kernel.device.DeviceImpl.DeviceDriverImpl;
 import newOs.kernel.process.ProcessManager;
 import newOs.kernel.process.scheduler.ProcessScheduler;
 import newOs.service.ServiaceImpl.ProcessManageServiceImpl;
@@ -179,6 +181,12 @@ public class bootLoader implements ApplicationRunner {
         processManageServiceImpl.executeProcess("process3");
         processManageServiceImpl.executeProcess("process4");
         processManageServiceImpl.executeProcess("process5");
+
+        //添加设备到设备队列  --实际上是设备文件，访问设备文件后添加
+        
+        DeviceDriver deviceDriver1 = new DeviceDriverImpl("K1", null);
+
+        //protectedMemory.getDeviceQueue().add();
 
     }
 }

@@ -1,10 +1,17 @@
 package newOs.kernel.process;
 
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
+import newOs.common.InterruptConstant.InterruptType;
+import newOs.common.InterruptConstant.SystemCallType;
+import newOs.common.fileSystemConstant.DeviceStatusType;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
+import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
+import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
 import newOs.kernel.process.scheduler.SideScheduler;
 
@@ -36,10 +43,11 @@ public class ProcessExecutionTask implements Runnable{
     // 设备控制表
     //private final LinkedList<DeviceInfo> deviceInfoTable;
 
-    private final newOs.kernel.interrupt.hardwareHandler.ISRHandler ISRHandler;
+    private final ISRHandler ISRHandler;
+    private final InterruptController interruptController;
 
 
-    public ProcessExecutionTask(PCB pcb, ProtectedMemory protectedMemory, ISRHandler ISRHandler, SideScheduler Sscheduler) {
+    public ProcessExecutionTask(PCB pcb, ProtectedMemory protectedMemory, ISRHandler ISRHandler, SideScheduler Sscheduler, InterruptController interruptController) {
         this.pcb = pcb;
 
         //暂时用pcb的模块进行模拟
@@ -49,6 +57,7 @@ public class ProcessExecutionTask implements Runnable{
         this.irlTable = protectedMemory.getIrlTable();
         this.ISRHandler = ISRHandler;
         this.Sscheduler = Sscheduler;
+        this.interruptController = interruptController;
     }
 
     @Override
@@ -117,7 +126,7 @@ public class ProcessExecutionTask implements Runnable{
             log.info("当前执行指令：" + instruction);
             switch (command){
                 case "M":
-                    //设置信息
+                    //设置PCB大小信息
 
 
                 case "A":       //进行逻辑地址的解析
@@ -137,6 +146,55 @@ public class ProcessExecutionTask implements Runnable{
                     pcb.setRemainingTime(pcb.getRemainingTime() - computeTime);
                     log.info(pcb.getProcessName() + "：" + instruction + "执行完成");
                     break;
+                case "OPEN":
+                    //打开文件- 如果返回是成功，则继续 如果返回失败，则直接抛出错误 -如果等待，则isSwitchProcess = 2
+                    //封装
+                    DeviceInfoImplDTO deviceInfo = new DeviceInfoImplDTO();
+                    deviceInfo.setDeviceName(parts[1]);
+                    deviceInfo.setInterruptType(InterruptType.SYSTEM_CALL);
+                    deviceInfo.setSystemCallType(SystemCallType.OPEN_FILE);
+                    deviceInfo.setPcb(pcb);
+                    DeviceInfoReturnImplDTO deviceInfoReturn = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo);
+                    if(deviceInfoReturn.getDeviceStatusType() == DeviceStatusType.FREE){
+                        //继续执行
+                        isSwitchProcess = 0;
+                    }else if(deviceInfoReturn.getDeviceStatusType() == DeviceStatusType.BUSY) {
+                        //等待
+                        isSwitchProcess = 2;
+                    }
+                    break;
+                case "READ":
+                    //读取文件- 如果返回是成功，则继续 如果返回失败，则直接抛出错误 -如果等待，则isSwitchProcess = 2
+                    //封装
+                    DeviceInfoImplDTO deviceInfo2 = new DeviceInfoImplDTO();
+                    deviceInfo2.setDeviceName(parts[1]);
+                    deviceInfo2.setInterruptType(InterruptType.SYSTEM_CALL);
+                    deviceInfo2.setSystemCallType(SystemCallType.READ_FILE);
+                    deviceInfo2.setPcb(pcb);
+                    DeviceInfoReturnImplDTO deviceInfoReturn2 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo2);
+                    //读取没有任何问题
+                    break;
+                case "WRITE":
+                    DeviceInfoImplDTO deviceInfo3 = new DeviceInfoImplDTO();
+                    deviceInfo3.setDeviceName(parts[1]);
+                    //写入文件信息
+                    deviceInfo3.setDeviceInfo(new JSONObject().fluentPut("content", parts[2]));
+                    //写入文件信息
+                    deviceInfo3.setInterruptType(InterruptType.SYSTEM_CALL);
+                    deviceInfo3.setSystemCallType(SystemCallType.WRITE_FILE);
+                    deviceInfo3.setPcb(pcb);
+                    DeviceInfoReturnImplDTO deviceInfoReturn3 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo3);
+                    //读取没有任何问题
+                case "CLOSE":
+                    DeviceInfoImplDTO deviceInfo4 = new DeviceInfoImplDTO();
+                    deviceInfo4.setDeviceName(parts[1]);
+                    deviceInfo4.setInterruptType(InterruptType.SYSTEM_CALL);
+                    deviceInfo4.setSystemCallType(SystemCallType.CLOSE_FILE);
+                    deviceInfo4.setPcb(pcb);
+                    DeviceInfoReturnImplDTO deviceInfoReturn4 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo4);
+                    break;
+
+
                 case "K":       //IO中断
                     break;
                 case "D":         //硬盘查询中断
