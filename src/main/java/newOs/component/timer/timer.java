@@ -1,7 +1,7 @@
 package newOs.component.timer;
 
 
-import newOs.dto.req.Info.InfoImpl.TimerInfoImpl;
+import newOs.dto.req.Info.InfoImplDTO.TimerInfoImplDTO;
 import newOs.kernel.interrupt.InterruptController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,7 +21,7 @@ public class timer {
     }
     @Scheduled(fixedRate = 600) // 每隔600ms执行一次
     public void sendInterruptRequest() {
-        TimerInfoImpl timerInfoImpl = new TimerInfoImpl().setTimerId(1).setInterruptType(TIMER);
-        interruptController.triggerTimer(timerInfoImpl);
+        TimerInfoImplDTO timerInfoImplDTO = new TimerInfoImplDTO().setTimerId(1).setInterruptType(TIMER);
+        interruptController.triggerTimer(timerInfoImplDTO);
     }
 }

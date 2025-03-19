@@ -2,11 +2,11 @@ package newOs.controller;
 
 
 
-import com.example.demo.dto.result.Result;
+import newOs.dto.result.Result;
 
 import newOs.service.ServiaceImpl.ProcessManageServiceImpl;
 import newOs.dto.req.ProcessManage.ProcessCreateReqDTO;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoReturnImpl;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.exception.ProcessException.ProcessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +34,7 @@ public class CmdCallController {
     @PostMapping("/run") // 处理进程指令
     public ResponseEntity<Result> handleProcessCommand(@RequestBody ProcessCreateReqDTO cmd) {
         try{
-            ProcessInfoReturnImpl process = processService.createProcess(cmd);
+            ProcessInfoReturnImplDTO process = processService.createProcess(cmd);
             Result result = Result.ok();
             result.setData(process).setRequestId(UUID.randomUUID().toString());
             return ResponseEntity.status(HttpStatus.CREATED).body(result);

@@ -5,7 +5,7 @@ package newOs.service.ServiceInterface;
 
 
 import newOs.dto.req.ProcessManage.ProcessCreateReqDTO;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoReturnImpl;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.dto.resp.ProcessManage.ProcessQueryAllRespDTO;
 
 
@@ -18,7 +18,7 @@ import newOs.dto.resp.ProcessManage.ProcessQueryAllRespDTO;
  */
 
 public interface ProcessManageService {
-    ProcessInfoReturnImpl createProcess(ProcessCreateReqDTO processCreateReqDTO);
+    ProcessInfoReturnImplDTO createProcess(ProcessCreateReqDTO processCreateReqDTO);
 
     void executeProcess(String processName);
 

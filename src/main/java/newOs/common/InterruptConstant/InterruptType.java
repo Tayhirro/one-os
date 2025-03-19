@@ -17,7 +17,7 @@ public enum InterruptType {
     OVERFLOW(4),
     BOUND_RANGE(5),
     INVALID_OPCODE(6),
-    DEVICE_NOT_AVAILABLE(7),
+    DEVICE_NyinOT_AVAILABLE(7),
     DOUBLE_FAULT(8),
     INVALID_TSS(10),
     SEGMENT_NOT_PRESENT(11),

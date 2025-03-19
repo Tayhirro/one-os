@@ -1,4 +1,4 @@
-package com.example.demo.dto.result;
+package newOs.dto.result;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 

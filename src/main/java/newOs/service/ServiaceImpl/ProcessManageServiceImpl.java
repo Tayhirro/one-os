@@ -1,12 +1,10 @@
 package newOs.service.ServiaceImpl;
 
 
-import newOs.common.InterruptConstant.InterruptType;
-import newOs.component.memory.protected1.PCB;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoImpl;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.dto.req.ProcessManage.ProcessCreateReqDTO;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoReturnImpl;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.dto.resp.ProcessManage.ProcessQueryAllRespDTO;
 import newOs.exception.Dispatch_Dismatch_Exception;
 import newOs.exception.OSException;
@@ -33,7 +31,7 @@ public class ProcessManageServiceImpl implements ProcessManageService {
     //检查使用切面进行检查
     //run process
     @Override
-    public ProcessInfoReturnImpl createProcess(ProcessCreateReqDTO processCreateReqDTO) throws OSException{     //执行创建进程，转发给kernel的syscall
+    public ProcessInfoReturnImplDTO createProcess(ProcessCreateReqDTO processCreateReqDTO) throws OSException{     //执行创建进程，转发给kernel的syscall
         String[] instructions = processCreateReqDTO.getInstructions();
 
             //写入文件系统
@@ -44,10 +42,10 @@ public class ProcessManageServiceImpl implements ProcessManageService {
              * */
 
         //转入访管中断,传递JSON
-        ProcessInfoImpl processInfo = new ProcessInfoImpl().setSystemCallType(CREATE_PROCESS).setInterruptType(SYSTEM_CALL).setInstructions(instructions);
+        ProcessInfoImplDTO processInfo = new ProcessInfoImplDTO().setSystemCallType(CREATE_PROCESS).setInterruptType(SYSTEM_CALL).setInstructions(instructions);
         InterruptSysCallInfo processInfoReturnImpl = systemCallDispatcher.Dispatch(processInfo);
-        if(processInfoReturnImpl instanceof ProcessInfoReturnImpl){
-            return (ProcessInfoReturnImpl) processInfoReturnImpl;
+        if(processInfoReturnImpl instanceof ProcessInfoReturnImplDTO){
+            return (ProcessInfoReturnImplDTO) processInfoReturnImpl;
         }else{
             throw new Dispatch_Dismatch_Exception("mis_match,expected processImpl","401");
         }
@@ -65,7 +63,7 @@ public class ProcessManageServiceImpl implements ProcessManageService {
     public void executeProcess(String processName) throws OSException{    //执行进程，转发给kernel的syscall
         try {
             //System.out.println("execute process");
-            ProcessInfoImpl processInfo = new ProcessInfoImpl().setSystemCallType(EXECUTE_PROCESS).setInterruptType(SYSTEM_CALL).setName(processName);
+            ProcessInfoImplDTO processInfo = new ProcessInfoImplDTO().setSystemCallType(EXECUTE_PROCESS).setInterruptType(SYSTEM_CALL).setName(processName);
             systemCallDispatcher.Dispatch(processInfo);
         }catch (OSException e){
             throw e;

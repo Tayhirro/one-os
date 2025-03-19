@@ -1,16 +1,13 @@
 package newOs.kernel.interrupt.sysCallHandler;
 
 
-import com.alibaba.fastjson.JSONObject;
 import newOs.common.InterruptConstant.SystemCallType;
 import newOs.component.memory.protected1.PCB;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoImpl;
-import newOs.dto.req.Info.InterruptInfo;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.exception.OSException;
 import newOs.kernel.interrupt.ISR;
 import newOs.kernel.process.ProcessManager;
-import newOs.tools.ProcessTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,8 +28,8 @@ public class SystemCallHandler implements ISR<InterruptSysCallInfo> {
     @Override
     public InterruptSysCallInfo execute(InterruptSysCallInfo interruptSysCallInfo) throws OSException {
         //系统调用 进程管理
-        if (interruptSysCallInfo instanceof ProcessInfoImpl) {
-            ProcessInfoImpl processInfo =  (ProcessInfoImpl) interruptSysCallInfo;
+        if (interruptSysCallInfo instanceof ProcessInfoImplDTO) {
+            ProcessInfoImplDTO processInfo =  (ProcessInfoImplDTO) interruptSysCallInfo;
             SystemCallType syscallType = processInfo.getSystemCallType();
             switch (syscallType) {
                 case CREATE_PROCESS:

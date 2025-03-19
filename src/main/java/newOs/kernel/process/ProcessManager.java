@@ -2,12 +2,11 @@ package newOs.kernel.process;
 
 
 import com.alibaba.fastjson.JSONObject;
-import jdk.jfr.DataAmount;
 import lombok.Data;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
-import newOs.dto.req.Info.InfoImpl.ProcessInfoReturnImpl;
+import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.kernel.process.scheduler.ProcessScheduler;
 import newOs.tools.ProcessTool;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +54,7 @@ public class ProcessManager{
         this.processScheduler = processScheduler;
     }
 
-    public ProcessInfoReturnImpl createProcess(String processName, JSONObject args,String[] instructions){
+    public ProcessInfoReturnImplDTO createProcess(String processName, JSONObject args, String[] instructions){
         // 创建进程
         int pid = ProcessTool.getPid(processName);
         // 创建进程pcb，放进pcbTable
@@ -87,7 +86,7 @@ public class ProcessManager{
         pcb.setInstructions(list.toArray(new String[1]));
         pcb.setExpectedTime(expectedTime);      //setExpectedtime
         // 写进文件系统  --暂时可以不用做
-        ProcessInfoReturnImpl processRInfo = new ProcessInfoReturnImpl();
+        ProcessInfoReturnImplDTO processRInfo = new ProcessInfoReturnImplDTO();
         return processRInfo;
     }
 
