@@ -6,6 +6,7 @@ import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
 import newOs.kernel.process.ProcessExecutionTask;
 import newOs.kernel.process.ProcessExecutionTaskFactory;
@@ -17,10 +18,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.*;
 
 import static newOs.common.processConstant.processStateConstant.*;
 import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
@@ -44,9 +42,11 @@ public class SideScheduler {
     private ExecutorService cpuSimulatorExecutor;
     private final ProtectedMemory protectedMemory;
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
-    private final ConcurrentLinkedQueue<Integer> irlIO;
+    private final ConcurrentLinkedQueue<PCB> irlIO;
 
     private final ISRHandler isrHandler;
+
+    private final InterruptController interruptController;
 
     /*
     * 1实现调度下一个进程 ----放入runningQueue
@@ -57,7 +57,7 @@ public class SideScheduler {
 
 
     @Autowired
-    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler) {
+    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler, InterruptController interruptController){
 
 
 
@@ -77,18 +77,12 @@ public class SideScheduler {
         //用于创建进程
         this.x86CPUSimulator = x86CPUSimulator;
         this.isrHandler = isrHandler;
+
+        this.interruptController = interruptController;
     }
 
 
     public void schedulerProcess(PCB pcb){
-        if(strategy.equals("SJF")||strategy.equals("SRJF")) {
-            readySJFQueue.removeIf(p -> p.equals(pcb));
-        }else {
-            readyQueue.removeIf(p -> p.equals(pcb));
-        }
-        //自减
-        x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).decrementAndGet();
-        //自减
 
         pcb.setState(RUNNING);
         //需要实现时间片控制
@@ -131,8 +125,9 @@ public class SideScheduler {
             // 注意空指针判断
             if (pcb.getCoreId() != null && pcb.getCoreId() == coreId) {
                 matchedPcb = pcb;
+                System.out.println("找到了匹配 coreId=" + coreId + " 的进程: " + pcb.getPid());
                 break;
-            }else if(pcb.getCoreId() == -1 && firstCorePcb == null){
+            }else if(pcb.getCoreId().equals(-1) && firstCorePcb == null){
                 firstCorePcb  = pcb;
             }
         }
@@ -141,20 +136,26 @@ public class SideScheduler {
         if (matchedPcb != null) {
             Ready2Running(matchedPcb);
             cpuSimulatorExecutors[coreId].submit(
-                    new ProcessExecutionTask(matchedPcb, protectedMemory, isrHandler, this)
+                    new ProcessExecutionTask(matchedPcb, protectedMemory, isrHandler, this,interruptController)
             );
         } else {
             System.out.println("队列中没有匹配 coreId=" + coreId + " 的进程。");
             //如果有-1的，也就是刚进来的进程，也执行
             if(firstCorePcb != null) {
+                //将这个pcb移除
+                if(strategy.equals("SJF")||strategy.equals("SRJF")) {
+                    readySJFQueue.remove(firstCorePcb);
+                }else{
+                    readyQueue.remove(firstCorePcb);
+                }
                 System.out.println("执行刚进来的进程");
                 firstCorePcb.setCoreId(coreId);
+                System.out.println("进程" + firstCorePcb.getCoreId()+"-"+firstCorePcb.getPid() + "进入运行队列");
                 //
-                x86CPUSimulator.getExecutorServiceReady().get(coreId).incrementAndGet();
                 x86CPUSimulator.getExecutorServiceReady().get(0).decrementAndGet();
                 //
                 cpuSimulatorExecutors[coreId].submit(
-                        new ProcessExecutionTask(firstCorePcb , protectedMemory, isrHandler, this)
+                        new ProcessExecutionTask(firstCorePcb , protectedMemory, isrHandler, this,interruptController)
                 );
             }
 
@@ -163,7 +164,7 @@ public class SideScheduler {
 
 
     public void Ready2Running(PCB pcb){
-        System.out.println("进程" + pcb.getPid() + "进入运行队列");
+        System.out.println("进程" + pcb.getCoreId()+"-"+pcb.getPid() + "进入运行队列");
         pcb.setState(RUNNING);
        if(strategy.equals("MLFQ")) {
            int priority = pcb.getPriority();
@@ -232,6 +233,7 @@ public class SideScheduler {
         }else{
             waitingQueue.remove(pcb);
             readyQueue.add(pcb);
+            System.out.println("进程" + pcb.getCoreId() +"-"+pcb.getPid() + "进入就绪队列");
         }
         x86CPUSimulator.getExecutorServiceReady().get(pcb.getCoreId()).incrementAndGet();
     }
@@ -264,16 +266,52 @@ public class SideScheduler {
     @Scheduled(fixedRate = 100) // 每隔 0.1 秒执行一次
     public void checkIOInterrupt(){ //检测IO是否完成
         //查询
-        System.out.println("检测IO中断");
         if(irlIO.peek() != null){       //说明IO触发
             //处理IO中断
             //队列中    存储pid
-            int pid = irlIO.poll();
-            PCB pcb = protectedMemory.getPcbTable().get(pid);
+            PCB pcb = irlIO.poll();
             //修改pcb状态
             Waiting2Ready(pcb);
+            System.out.println("IO中断处理完成");
+            System.out.println("进程" + pcb.getCoreId() +"-"+pcb.getPid() + "完成io等待后进入就绪队列");
         }
     }
+    @Scheduled(fixedRate = 10) // 每隔 0.01 秒执行一次
+    public void checkReadyQueue(){
+        //检测就绪队列是否有进程，同时对应的核心是否空闲
+        for(int i = 1; i < x86CPUSimulator.getExecutors().length; i++){
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) x86CPUSimulator.getExecutors()[i];
+            int idleThreads = executor.getCorePoolSize() - executor.getActiveCount();
+            if(idleThreads > 0) {
+                //有空闲进程
+                PCB pcb = null;
+                if(strategy.equals("SJF")||strategy.equals("SRJF")) {
+                    for(PCB pcb1 : readySJFQueue){
+                        if(pcb1.getCoreId() == i || pcb1.getCoreId() == -1){
+                            pcb1.setCoreId(i);
+                            pcb = pcb1;
+                            break;
+                        }
+                    }
+                }else{
+                    for(PCB pcb1 : readyQueue){
+                        if(pcb1.getCoreId() == i || pcb1.getCoreId() == -1){
+                            pcb1.setCoreId(i);
+                            pcb = pcb1;
+                            break;
+                        }
+                    }
+                }
+                if(pcb != null){
+                    executeNextProcess(i);
+                }
+            }
+        }
+
+    }
+
+
+
     @Scheduled(fixedRate = 1000) // 每隔 1 秒执行一次
     public void loadBalance() {
         // executorServiceReady: 其中第0个一般可能是“新进/未分配”的数量，
@@ -281,16 +319,16 @@ public class SideScheduler {
         // 先把这几个 AtomicInteger 的值取出来
         int numberOfCores = x86CPUSimulator.getExecutors().length;  // 假设=5
         List<Integer> loads = new ArrayList<>(numberOfCores);
-        for (int coreId = 1; coreId < numberOfCores; coreId++) {
+        for (int coreId = 0; coreId < numberOfCores; coreId++) {
             loads.add(x86CPUSimulator.getExecutorServiceReady().get(coreId).get());
         }
-
+        System.out.println("各核心负载：" + loads);
         // 找到最大负载和最小负载的核心
         int maxLoad = -1;
         int maxCoreId = -1;
         int minLoad = Integer.MAX_VALUE;
         int minCoreId = -1;
-        for (int i = 0; i < loads.size(); i++) {
+        for (int i = 1; i < loads.size(); i++) {
             if (loads.get(i) > maxLoad) {
                 maxLoad = loads.get(i);
                 maxCoreId = i;
@@ -301,7 +339,7 @@ public class SideScheduler {
             }
         }
 
-        // 设定一个差值阈值，比如：差值 > 2 就做负载均衡
+         //设定一个差值阈值，比如：差值 > 2 就做负载均衡
         int THRESHOLD = 2;
         if ((maxLoad - minLoad) > THRESHOLD) {
             // 计算应该搬多少个进程过来，可以是一半/三分之一等策略

@@ -33,7 +33,7 @@ public class ProcessExecutionTask implements Runnable{
 
 
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
-
+    private final ConcurrentLinkedQueue<PCB> irlIO;
 
 
 
@@ -47,6 +47,7 @@ public class ProcessExecutionTask implements Runnable{
     private final InterruptController interruptController;
 
 
+
     public ProcessExecutionTask(PCB pcb, ProtectedMemory protectedMemory, ISRHandler ISRHandler, SideScheduler Sscheduler, InterruptController interruptController) {
         this.pcb = pcb;
 
@@ -55,6 +56,7 @@ public class ProcessExecutionTask implements Runnable{
         this.instructions = pcb.getInstructions();
 
         this.irlTable = protectedMemory.getIrlTable();
+        this.irlIO = protectedMemory.getIrlIO();
         this.ISRHandler = ISRHandler;
         this.Sscheduler = Sscheduler;
         this.interruptController = interruptController;
@@ -64,6 +66,7 @@ public class ProcessExecutionTask implements Runnable{
     public void run() {
         try {
             InterruptRequestLine irl = irlTable.get(Thread.currentThread().getId());
+
             //对于run， coreID = executeservice-i
 
 
@@ -71,7 +74,7 @@ public class ProcessExecutionTask implements Runnable{
             //模拟流水线切换指令边界
             int isSwitchProcess = 0;
 
-            Sscheduler.schedulerProcess(pcb);   //调度进程
+            Sscheduler.schedulerProcess(pcb);
 
             //获取当前线程的id
             for (int ir = pcb.getIr(); ir < instructions.length; ir = pcb.getIr()) {
@@ -79,19 +82,16 @@ public class ProcessExecutionTask implements Runnable{
                 //执行Q退出的时候，不需要检测时间片是否用完
                 if (instruction.equals(Q)) {
                     executeInstruction(instruction);
-                    String peek = irl.peek();
-                    if (peek != null) {
-                        ISRHandler.handlIsrInterruptIO();
-                    }
                     break;
                 } else {
                     // 执行到IO指令，一直获取不到文件资源，都会导致进程切换，ir不会+1
                     isSwitchProcess = executeInstruction(instruction);
 
-                    //2 表示进行IO，硬盘访问
+                    //2 表示进行IO等待
                     if (isSwitchProcess == 2) {
-
-
+                        //进程切换等待
+                        Sscheduler.Runing2Wait(pcb);
+                        break;
                     } else {
                         //执行完一条指令之后
                         //检测时间片
@@ -103,8 +103,8 @@ public class ProcessExecutionTask implements Runnable{
                                 isSwitchProcess = i; //进行进程的调度切换
                                 //时间片用完,调度到等待队列
                                 Sscheduler.Runing2Ready(pcb);
+                                log.info(pcb.getProcessName() + "出让CPU");
                             }
-                            log.info(pcb.getProcessName() + "出让CPU");
                             // 时间片耗尽导致进程切换
                             if (isSwitchProcess > 0)
                                 break;
@@ -172,7 +172,13 @@ public class ProcessExecutionTask implements Runnable{
                     deviceInfo2.setSystemCallType(SystemCallType.READ_FILE);
                     deviceInfo2.setPcb(pcb);
                     DeviceInfoReturnImplDTO deviceInfoReturn2 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo2);
-                    //读取没有任何问题
+                    if(deviceInfoReturn2.getDeviceStatusType() == DeviceStatusType.FREE){
+                        //继续执行
+                        isSwitchProcess = 0;
+                    }else if(deviceInfoReturn2.getDeviceStatusType() == DeviceStatusType.BUSY) {
+                        //等待
+                        isSwitchProcess = 2;
+                    }
                     break;
                 case "WRITE":
                     DeviceInfoImplDTO deviceInfo3 = new DeviceInfoImplDTO();
@@ -184,21 +190,22 @@ public class ProcessExecutionTask implements Runnable{
                     deviceInfo3.setSystemCallType(SystemCallType.WRITE_FILE);
                     deviceInfo3.setPcb(pcb);
                     DeviceInfoReturnImplDTO deviceInfoReturn3 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo3);
-                    //读取没有任何问题
+                    if(deviceInfoReturn3.getDeviceStatusType() == DeviceStatusType.FREE){
+                        //继续执行
+                        isSwitchProcess = 0;
+                    }else if(deviceInfoReturn3.getDeviceStatusType() == DeviceStatusType.BUSY) {
+                        //等待
+                        isSwitchProcess = 2;
+                    }
                 case "CLOSE":
-                    DeviceInfoImplDTO deviceInfo4 = new DeviceInfoImplDTO();
-                    deviceInfo4.setDeviceName(parts[1]);
-                    deviceInfo4.setInterruptType(InterruptType.SYSTEM_CALL);
-                    deviceInfo4.setSystemCallType(SystemCallType.CLOSE_FILE);
-                    deviceInfo4.setPcb(pcb);
-                    DeviceInfoReturnImplDTO deviceInfoReturn4 = (DeviceInfoReturnImplDTO) interruptController.triggerSystemCall(deviceInfo4);
+//                    DeviceInfoImplDTO deviceInfo4 = new DeviceInfoImplDTO();
+//                    deviceInfo4.setDeviceName(parts[1]);
+//                    deviceInfo4.setInterruptType(InterruptType.SYSTEM_CALL);
+//                    deviceInfo4.setSystemCallType(SystemCallType.CLOSE_FILE);
+//                    deviceInfo4.setPcb(pcb);
+
                     break;
 
-
-                case "K":       //IO中断
-                    break;
-                case "D":         //硬盘查询中断
-                    break;
                 case "Q":
                     pcb.setIr(0);
                     pcb.setState(TERMINATED);

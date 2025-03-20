@@ -3,6 +3,7 @@ package newOs.kernel.device.DeviceImpl;
 import com.alibaba.fastjson.JSONObject;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import newOs.common.fileSystemConstant.DeviceStatusType;
 import newOs.component.memory.protected1.PCB;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
@@ -10,19 +11,23 @@ import newOs.dto.resp.DeviceManage.DevicePCBQueryAllRespDTO;
 import newOs.dto.resp.DeviceManage.DeviceQueryAllRespDTO;
 import newOs.kernel.device.DeviceDriver;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 @Data
+@Getter
 public class DeviceDriverImpl implements DeviceDriver, Runnable {
     private final ConcurrentLinkedQueue<PCB> deviceWaitingQueue ;
     private final String deviceName;
     private final JSONObject deviceInfo;
     private boolean isBusy = false; // 设备状态
+    private Consumer<DeviceInfoReturnImplDTO> callback;
 
     public DeviceDriverImpl(String deviceName, JSONObject deviceInfo) {
         this.deviceName = deviceName;
         this.deviceInfo = deviceInfo;
         this.deviceWaitingQueue = new ConcurrentLinkedQueue<>();
     }
+
 
     @Override
     public DeviceInfoReturnImplDTO add(PCB pcb) {
@@ -49,10 +54,6 @@ public class DeviceDriverImpl implements DeviceDriver, Runnable {
             // 没有等待进程，设备变为空闲状态
             isBusy = false;
             System.out.println("设备 " + deviceName + " 现在空闲");
-        } else {
-            // 有等待进程，调度下一个
-            PCB nextPcb = deviceWaitingQueue.poll();
-            System.out.println("进程 " + nextPcb.getPid() + " 开始使用设备 " + deviceName);
         }
         return deviceInfoReturnImplDTO;
     }
@@ -68,16 +69,16 @@ public class DeviceDriverImpl implements DeviceDriver, Runnable {
     }
     @Override
     public void run() {
-        while (true) {
-            if (isBusy) {
-                try {
-                    Thread.sleep(1000);
-                    releaseDevice();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+//        while (true) {
+//            if (isBusy) {
+//                try {
+//                    Thread.sleep(1000);
+//                    releaseDevice();
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
     }
 
 }

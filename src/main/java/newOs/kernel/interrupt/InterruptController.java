@@ -2,6 +2,7 @@ package newOs.kernel.interrupt;
 
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
 import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.InterruptSysCallInfo;
@@ -41,7 +42,9 @@ public class InterruptController {
         IDT.get(TIMER).execute(timerInfo);
 
     }
-    public void trigger(){
 
+    //返回信息trigger
+    public void trigger(DeviceInfoReturnImplDTO deviceInfoReturnImplDTO) {
+        IDT.get(InterruptType.IO_INTERRUPT).execute(deviceInfoReturnImplDTO);
     }
 }

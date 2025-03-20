@@ -3,10 +3,13 @@ package newOs.bootloader;
 import newOs.component.cpu.Interrupt.IDTableImpl.X86IDTableCreate;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.cpu.X86CPUSimulator;
+import newOs.component.device.Disk;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
 import newOs.kernel.device.DeviceDriver;
 import newOs.kernel.device.DeviceImpl.DeviceDriverImpl;
+import newOs.kernel.device.DeviceImpl.DiskDriverImpl;
+import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.process.ProcessManager;
 import newOs.kernel.process.scheduler.ProcessScheduler;
 import newOs.service.ServiaceImpl.ProcessManageServiceImpl;
@@ -29,9 +32,11 @@ public class bootLoader implements ApplicationRunner {
     private final ProtectedMemory protectedMemory;
     private final ProcessScheduler processScheduler;
     private final ProcessManageServiceImpl processManageServiceImpl;
+    private final Disk disk;
 
     //注入初始化组件
     private final X86IDTableCreate x86IDTableCreate;
+    private final InterruptController interruptController;
 
 
     @Autowired
@@ -39,13 +44,16 @@ public class bootLoader implements ApplicationRunner {
                       ProtectedMemory protectedMemory,
                       ProcessScheduler processScheduler,
                       ProcessManageServiceImpl processManageServiceImpl,
-                      X86IDTableCreate x86IDTableCreate
-                        ) {
+                      X86IDTableCreate x86IDTableCreate,
+                      InterruptController interruptController,
+                      Disk disk){
         this.x86CPUSimulator = x86CPUSimulator;
         this.protectedMemory = protectedMemory;
         this.processScheduler = processScheduler;
         this.processManageServiceImpl = processManageServiceImpl;
         this.x86IDTableCreate = x86IDTableCreate;
+        this.interruptController = interruptController;
+        this.disk = disk;
     }
 
 
@@ -147,6 +155,9 @@ public class bootLoader implements ApplicationRunner {
                 "C 1000",
                 "A 10240",
                 "C 1000",
+                "OPEN disk1",
+                "READ disk1",
+                "CLOSE disk1",
                 "A 10240",
                 "C 1000",
                 "A 10240",
@@ -176,17 +187,20 @@ public class bootLoader implements ApplicationRunner {
         protectedMemory.getPcbTable().put(pid5, pcb5);
 
 
+        DeviceDriver deviceDriver1 = new DiskDriverImpl("disk1", null,interruptController,disk);
+
+        protectedMemory.getDeviceQueue().add(deviceDriver1);
+
+
+
         processManageServiceImpl.executeProcess("process1");
         processManageServiceImpl.executeProcess("process2");
         processManageServiceImpl.executeProcess("process3");
         processManageServiceImpl.executeProcess("process4");
         processManageServiceImpl.executeProcess("process5");
 
-        //添加设备到设备队列  --实际上是设备文件，访问设备文件后添加
         
-        DeviceDriver deviceDriver1 = new DeviceDriverImpl("K1", null);
 
-        //protectedMemory.getDeviceQueue().add();
 
     }
 }

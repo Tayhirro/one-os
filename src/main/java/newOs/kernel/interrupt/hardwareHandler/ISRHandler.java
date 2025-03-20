@@ -3,12 +3,14 @@ package newOs.kernel.interrupt.hardwareHandler;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
+import newOs.kernel.process.scheduler.SideScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Component
 public class ISRHandler {
@@ -18,22 +20,19 @@ public class ISRHandler {
 
 
     private final HashMap<Integer, PCB> pcbTable;
-    private final Queue<PCB> runningQueue;
-    private final Queue<PCB> readyQueue;
-    private final Queue<PCB> waitingQueue;
+
+    private final ConcurrentLinkedQueue<PCB> irlIO;
 
     @Autowired
-    public ISRHandler(ProtectedMemory protectedMemory){
+    public ISRHandler(ProtectedMemory protectedMemory) {
         this.protectedMemory = protectedMemory;
         this.pcbTable = protectedMemory.getPcbTable();
-        this.readyQueue =protectedMemory.getReadyQueue();
-        this.runningQueue = protectedMemory.getRunningQueue();
-        this.waitingQueue = protectedMemory.getWaitingQueue();
         this.irlTable = protectedMemory.getIrlTable();
+        this.irlIO = protectedMemory.getIrlIO();
     }
 
 
-    //用于处理IRL线上 关于IO/Timer的中断
+    //用于处理IRL线上 关于TIMRER的中断
     public int handlIsrInterrupt(PCB pcb){
         int isSwitchProcess = 0;
         InterruptRequestLine irl = irlTable.get(Thread.currentThread().getId());
@@ -50,7 +49,5 @@ public class ISRHandler {
 
         return  isSwitchProcess;
     }
-    public int handlIsrInterruptIO(){
-        return 1;
-    }
+
 }

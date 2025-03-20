@@ -4,6 +4,7 @@ package newOs.kernel.interrupt.sysCallHandler;
 import newOs.common.InterruptConstant.SystemCallType;
 import newOs.component.memory.protected1.PCB;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
+//import newOs.dto.req.Info.InfoImplDTO.FileInfoImplDTO;
 import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.exception.OSException;
@@ -69,11 +70,12 @@ public class SystemCallHandler implements ISR<InterruptSysCallInfo> {
                     System.out.println("未知的系统调用: " + syscallType);
                     throw new OSException("未知的系统调用: " , "403");
             }
-
-
-
-        }else{
-            //暂时
+        }
+//        else if(interruptSysCallInfo instanceof FileInfoImplDTO){
+//
+//
+//        }
+        else{//暂时
             return null;
         }
     }

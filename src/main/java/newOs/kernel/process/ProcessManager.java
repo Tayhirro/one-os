@@ -108,14 +108,12 @@ public class ProcessManager{
                     //唤醒调度器
                     cpuSimulatorExecutors[i].submit(processExecutionTask);
                     break;
-                }else{  //没有就继续
-                    continue;
                 }
             }
             //循环完都没有
             if(i == cpuSimulatorExecutors.length) {
                 //加入就绪队列
-                System.out.println("进程" + pcb.getPid() + "进入就绪队列");
+                System.out.println("进程" + pcb.getCoreId()+"-"+pcb.getPid() + "进入就绪队列");
                 if(strategy.equals("SJRF")||strategy.equals("SJF")){
                     readySJFQueue.add(pcb);
                 }else{
@@ -123,6 +121,7 @@ public class ProcessManager{
                 }
 
                 x86CPUSimulator.getExecutorServiceReady().get(0).incrementAndGet(); //进行自增
+                System.out.println(x86CPUSimulator.getExecutorServiceReady().get(0).get());
             }
         } finally { //延时一段用于 activecount的数值更新
             try {

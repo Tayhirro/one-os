@@ -54,11 +54,12 @@ public class ProtectedMemory {
 
 
 
+
     //中断请求表
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
 
     //IO中断线
-    private final ConcurrentLinkedQueue<Integer> irlIO;
+    private final ConcurrentLinkedQueue<PCB> irlIO;
 
     public  ProtectedMemory() {
         // 初始化数据结构

@@ -8,7 +8,7 @@ import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.dto.resp.ProcessManage.ProcessQueryAllRespDTO;
 import newOs.exception.Dispatch_Dismatch_Exception;
 import newOs.exception.OSException;
-import newOs.kernel.syscall.SystemCallDispatcher;
+import newOs.kernel.interrupt.InterruptController;
 import newOs.service.ServiceInterface.ProcessManageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,13 +19,12 @@ import static newOs.common.InterruptConstant.SystemCallType.EXECUTE_PROCESS;
 
 @Service
 public class ProcessManageServiceImpl implements ProcessManageService {
-    private final SystemCallDispatcher systemCallDispatcher;
-
+    private final InterruptController interruptController;
 
 
     @Autowired
-    public ProcessManageServiceImpl(SystemCallDispatcher systemCallDispatcher) {
-        this.systemCallDispatcher = systemCallDispatcher;
+    public ProcessManageServiceImpl(InterruptController interruptController) {
+        this.interruptController = interruptController;
     }
 
     //检查使用切面进行检查
@@ -43,7 +42,7 @@ public class ProcessManageServiceImpl implements ProcessManageService {
 
         //转入访管中断,传递JSON
         ProcessInfoImplDTO processInfo = new ProcessInfoImplDTO().setSystemCallType(CREATE_PROCESS).setInterruptType(SYSTEM_CALL).setInstructions(instructions);
-        InterruptSysCallInfo processInfoReturnImpl = systemCallDispatcher.Dispatch(processInfo);
+        InterruptSysCallInfo processInfoReturnImpl = interruptController.triggerSystemCall(processInfo);
         if(processInfoReturnImpl instanceof ProcessInfoReturnImplDTO){
             return (ProcessInfoReturnImplDTO) processInfoReturnImpl;
         }else{
@@ -64,7 +63,7 @@ public class ProcessManageServiceImpl implements ProcessManageService {
         try {
             //System.out.println("execute process");
             ProcessInfoImplDTO processInfo = new ProcessInfoImplDTO().setSystemCallType(EXECUTE_PROCESS).setInterruptType(SYSTEM_CALL).setName(processName);
-            systemCallDispatcher.Dispatch(processInfo);
+            interruptController.triggerSystemCall(processInfo);
         }catch (OSException e){
             throw e;
         }
