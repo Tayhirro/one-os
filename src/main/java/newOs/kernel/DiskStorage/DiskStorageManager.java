@@ -1,8 +1,5 @@
 package newOs.kernel.DiskStorage;
 
-import lombok.Data;
-import org.springframework.stereotype.Component;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,24 +9,10 @@ import java.util.List;
  * 磁盘存储管理器，通过SQLite数据库模拟磁盘块存储。
  * 提供块分配、释放、读写等核心功能，块大小固定为4KB。
  */
-@Component
-@Data
 public class DiskStorageManager {
-
-    //这个地方写的不行，拉到properties去配置
-    //
-    //
-    //
-    //
     private static final String DB_URL = "jdbc:sqlite:disk.db";
     private static final int BLOCK_SIZE = 4096; // 4KB块大小
-    //
-    //
-    //
-    //
 
-
-    //管理配置修改mapper，或者能用也行
     /** 获取数据库连接 */
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
