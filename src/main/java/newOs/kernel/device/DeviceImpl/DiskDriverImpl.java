@@ -14,6 +14,7 @@ import newOs.kernel.interrupt.InterruptController;
 
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 @Data
@@ -22,6 +23,7 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
     private final String deviceName;
     private final JSONObject deviceInfo;
     private boolean isBusy = false;
+    private final ReentrantLock Busylock = new ReentrantLock();
     private JSONObject resultCache; // 读取缓冲区
     private JSONObject accessCache;
     private int isWrite = 0; // 读写标志
@@ -42,18 +44,25 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
         System.out.println("进程 " + pcb.getCoreId()+"-"+pcb.getPid() + " 请求使用设备 " + deviceName);
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
         deviceInfoReturnImplDTO.setDeviceName(deviceName).setPcb(pcb);
-        if (!isBusy) {
-            // 设备空闲，直接使用
-            isBusy = true;
-            nowPcb = pcb;
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 直接使用设备 " + deviceName);
-            deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.FREE);
-            isBusy = false;
-        } else {
-            // 设备忙，将进程加入等待队列
-            deviceWaitingQueue.offer(pcb);
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 等待设备 " + deviceName + " 可用");
-            deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+        Busylock.lock();
+        try {
+            if (!isBusy) {
+                // 设备空闲，直接使用
+                isBusy = true;
+                nowPcb = pcb;
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 直接使用设备 " + deviceName);
+                deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.FREE);
+                isBusy = false;
+            } else {
+                // 设备忙，将进程加入等待队列
+                deviceWaitingQueue.offer(pcb);
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 等待设备 " + deviceName + " 可用");
+                deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            Busylock.unlock();
         }
         return deviceInfoReturnImplDTO;
     }
@@ -72,7 +81,12 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
         if (deviceWaitingQueue.isEmpty()) {
             // 没有等待进程，设备变为空闲状态
-            isBusy = false;
+            Busylock.lock();
+            try {
+                isBusy = false;
+            }finally {
+                Busylock.unlock();
+            }
             System.out.println("设备 " + deviceName + " 现在空闲");
         }
         interruptController.trigger(deviceInfoReturnImplDTO);
@@ -81,64 +95,84 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
     }
     @Override
     public void run() {
-        if(isWrite==0) {
-            System.out.println("设备 " + deviceName + " 读取中...");
-            try {
-                Thread.sleep(2000); // 模拟设备访问时间（阻塞）
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        //加锁设置-
+        Busylock.lock();
+        try {
+            if (isWrite == 0) {
+                System.out.println("设备 " + deviceName + " 读取中...");
+                try {
+                    Thread.sleep(2000); // 模拟设备访问时间（阻塞）
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
-            // **设备读取完成后，生成结果**
-            System.out.println("设备 " + deviceName + " 读取完成！");
-        }else{
-            System.out.println("设备 " + deviceName + " 写入中...");
-            try {
-                Thread.sleep(2000); // 模拟设备访问时间（阻塞）
-                //
+                // **设备读取完成后，生成结果**
+                System.out.println("设备 " + deviceName + " 读取完成！");
+            } else {
+                System.out.println("设备 " + deviceName + " 写入中...");
+                try {
+                    Thread.sleep(2000); // 模拟设备访问时间（阻塞）
+                    //
 
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // **设备写入完成后，生成结果**
+                System.out.println("设备 " + deviceName + " 写入完成！");
             }
-            // **设备写入完成后，生成结果**
-            System.out.println("设备 " + deviceName + " 写入完成！");
+        }catch(Exception e){
+            e.printStackTrace();
+        } finally {
+            Busylock.unlock();
         }
     }
     // **直接执行 run()，阻塞进程**
     public DeviceInfoReturnImplDTO executeDeviceReadOperation(PCB pcb){
         //不会执行run，而是提交到线程池中
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
-        if (!isBusy) {
-            // 设备空闲，直接使用
-            isWrite = 0; // 设置读取标志
-            isBusy = true;
-            nowPcb = pcb;
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 开始对设备进行   读    操作 " + deviceName);
-            run();
-            deviceInfoReturnImplDTO.setArgs(resultCache).setDeviceStatusType(DeviceStatusType.FREE);
-            isBusy = false;
-        }else{
-            deviceWaitingQueue.offer(pcb);
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 在读的时候 等待设备 " + deviceName + " 可用");
-            deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+        Busylock.lock();
+        try {
+            if (!isBusy) {
+                // 设备空闲，直接使用
+                isWrite = 0; // 设置读取标志
+                isBusy = true;
+                nowPcb = pcb;
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 开始对设备进行   读    操作 " + deviceName);
+                run();
+                deviceInfoReturnImplDTO.setArgs(resultCache).setDeviceStatusType(DeviceStatusType.FREE);
+                isBusy = false;
+            } else {
+                deviceWaitingQueue.offer(pcb);
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 在读的时候 等待设备 " + deviceName + " 可用");
+                deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+            }
+        }finally {
+            Busylock.unlock();
         }
         return deviceInfoReturnImplDTO;
     }
     public DeviceInfoReturnImplDTO executeDeviceWriteOperation(JSONObject args,PCB pcb) {
         // **写入操作**
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
-        if (!isBusy) {
-            isWrite = 1; // 设置写入标志
-            accessCache = args; // 写入内容
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 开始对设备进行   写   操作 " + deviceName);
-            isBusy = true;
-            run(); // 直接调用 run()，进程会阻塞等待执行完成
-            isBusy = false;
-            deviceInfoReturnImplDTO.setArgs(resultCache).setDeviceStatusType(DeviceStatusType.FREE);
-        }else{
-            deviceWaitingQueue.offer(pcb);
-            System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 在读的时候 等待设备 " + deviceName + " 可用");
-            deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+        Busylock.lock();
+        try {
+            if (!isBusy) {
+                isWrite = 1; // 设置写入标志
+                accessCache = args; // 写入内容
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 开始对设备进行   写   操作 " + deviceName);
+                isBusy = true;
+                run(); // 直接调用 run()，进程会阻塞等待执行完成
+                isBusy = false;
+                deviceInfoReturnImplDTO.setArgs(resultCache).setDeviceStatusType(DeviceStatusType.FREE);
+            } else {
+                deviceWaitingQueue.offer(pcb);
+                System.out.println("进程 " + pcb.getCoreId() + "-" + pcb.getPid() + " 在读的时候 等待设备 " + deviceName + " 可用");
+                deviceInfoReturnImplDTO.setDeviceStatusType(DeviceStatusType.BUSY);
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            Busylock.unlock();
         }
         return deviceInfoReturnImplDTO;
     }
