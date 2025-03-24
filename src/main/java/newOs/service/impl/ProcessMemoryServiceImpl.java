@@ -7,7 +7,6 @@ import newOs.exception.MemoryAllocationException;
 import newOs.exception.MemoryException;
 import newOs.exception.MemoryProtectionException;
 import newOs.kernel.memory.MemoryManager;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.monitor.MemoryStats;
 import newOs.service.ProcessMemoryService;
@@ -327,20 +326,6 @@ public class ProcessMemoryServiceImpl implements ProcessMemoryService {
     
     public void prefetchMemory(int processId, VirtualAddress virtualAddress, long size, boolean readAhead) throws MemoryException {
         // 内部实现
-    }
-
-    @Override
-    public List<MemorySegment> getProcessMemorySegments(int processId) throws MemoryException {
-        log.debug("获取进程{}的内存段列表", processId);
-        
-        try {
-            // 获取内存段列表
-            // 由于MemoryManager没有直接提供相应方法，返回空列表或模拟数据
-            return new ArrayList<>(); // 暂时返回空列表
-        } catch (Exception e) {
-            log.error("获取进程{}内存段列表失败: {}", processId, e.getMessage(), e);
-            throw new MemoryException("获取内存段列表失败: " + e.getMessage());
-        }
     }
 
     @Override

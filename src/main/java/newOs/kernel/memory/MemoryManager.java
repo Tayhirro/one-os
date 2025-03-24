@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.kernel.memory.virtual.paging.Page;
 import newOs.kernel.memory.virtual.paging.PageFrame;
 import newOs.component.memory.protected1.PCB;
@@ -1501,15 +1500,6 @@ public class MemoryManager {
         }
         
         return result;
-    }
-
-    /**
-     * 获取内存段列表
-     * @return 内存段列表
-     */
-    public List<MemorySegment> getMemorySegments() {
-        log.debug("获取内存段列表");
-        return new ArrayList<>(); // 实际实现应返回真实的内存段列表
     }
 
     /**

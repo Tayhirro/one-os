@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import newOs.kernel.memory.model.VirtualAddress;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.exception.MemoryException;
 import newOs.service.MemoryFileSystemService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -2,7 +2,6 @@ package newOs.service;
 
 import newOs.exception.MemoryException;
 import newOs.kernel.memory.model.MemoryRegion;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.kernel.memory.model.PhysicalAddress;
 import newOs.kernel.memory.model.VirtualAddress;
 
@@ -201,12 +200,6 @@ public interface MemoryManageService {
      * @return 进程内存使用情况列表
      */
     List<Map<String, Object>> listProcessesMemoryUsage();
-
-    /**
-     * 列出系统内存段信息
-     * @return 内存段列表
-     */
-    List<MemorySegment> listMemorySegments();
 
     /**
      * 设置系统内存使用告警阈值

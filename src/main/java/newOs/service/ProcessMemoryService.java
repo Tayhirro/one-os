@@ -3,7 +3,6 @@ package newOs.service;
 import newOs.exception.MemoryAllocationException;
 import newOs.exception.MemoryException;
 import newOs.exception.MemoryProtectionException;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.kernel.memory.model.VirtualAddress;
 
 import java.util.List;
@@ -147,14 +146,6 @@ public interface ProcessMemoryService {
      * @throws MemoryException 内存异常
      */
     void prefetchMemory(int processId, VirtualAddress virtualAddress, long size) throws MemoryException;
-
-    /**
-     * 获取进程的内存段列表
-     * @param processId 进程ID
-     * @return 内存段列表
-     * @throws MemoryException 内存异常
-     */
-    List<MemorySegment> getProcessMemorySegments(int processId) throws MemoryException;
 
     /**
      * 获取进程内存使用统计
