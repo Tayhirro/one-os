@@ -129,7 +129,6 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
         //不会执行run，而是提交到线程池中
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
         boolean shouldExecute = false;
-
         Busylock.lock();
         try {
             if (!isBusy) {
