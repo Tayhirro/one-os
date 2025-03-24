@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import newOs.exception.MemoryException;
 import newOs.kernel.memory.MemoryManager;
 import newOs.kernel.memory.model.MemoryRegion;
-import newOs.kernel.memory.model.MemorySegment;
 import newOs.kernel.memory.model.PhysicalAddress;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.monitor.MemoryStats;
@@ -592,18 +591,6 @@ public class MemoryManageServiceImpl implements MemoryManageService {
         });
         
         return result;
-    }
-
-    @Override
-    public List<MemorySegment> listMemorySegments() {
-        log.debug("列出系统内存段信息");
-        
-        try {
-            return memoryManager.getMemorySegments();
-        } catch (Exception e) {
-            log.error("获取内存段信息失败: {}", e.getMessage(), e);
-            return new ArrayList<>();
-        }
     }
 
     @Override
