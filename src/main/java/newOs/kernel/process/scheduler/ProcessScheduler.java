@@ -26,7 +26,7 @@ public class ProcessScheduler {
     private final ConcurrentHashMap<Long, InterruptRequestLine> irlTable;
     private ExecutorService[] cpuSimulatorExecutors;
     private final ProtectedMemory protectedMemory;
-    private final ProcessExecutionTaskFactory processExecutionTaskFactory;
+    private ProcessExecutionTaskFactory processExecutionTaskFactory;
     private final ISRHandler ISRHandler;
 
     private static final Semaphore cpuSemaphore = new Semaphore(4);
@@ -42,13 +42,17 @@ public class ProcessScheduler {
 
     //依赖注入
     @Autowired
-    public ProcessScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ProcessExecutionTaskFactory processExecutionTaskFactory, ISRHandler ISRHandler) {
+    public ProcessScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler ISRHandler) {
         this.protectedMemory = protectedMemory;
         this.readyQueue = protectedMemory.getReadyQueue();
         this.irlTable = protectedMemory.getIrlTable();
         this.cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
-        this.processExecutionTaskFactory = processExecutionTaskFactory;
         this.ISRHandler = ISRHandler;
+    }
+    
+    @Autowired
+    public void setProcessExecutionTaskFactory(ProcessExecutionTaskFactory processExecutionTaskFactory) {
+        this.processExecutionTaskFactory = processExecutionTaskFactory;
     }
 //    public void spanWait(ExecutorService cpuSimulatorExecutor){
 //        cpuSimulatorExecutor.submit(() -> {
@@ -78,5 +82,45 @@ public class ProcessScheduler {
 //            }
 //        });
 //    }
+
+    /**
+     * 从调度器中移除进程
+     * @param pcb 要移除的进程控制块
+     * @return 是否成功移除
+     */
+    public boolean removeProcess(PCB pcb) {
+        if (pcb == null) {
+            return false;
+        }
+        
+        boolean removed = false;
+        
+        // 从就绪队列移除
+        if (protectedMemory.getReadyQueue().remove(pcb)) {
+            removed = true;
+        }
+        
+        // 从运行队列移除
+        if (protectedMemory.getRunningQueue().remove(pcb)) {
+            removed = true;
+        }
+        
+        // 从等待队列移除
+        if (protectedMemory.getWaitingQueue().remove(pcb)) {
+            removed = true;
+        }
+        
+        // 从SJF就绪队列移除
+        if (protectedMemory.getReadySJFQueue().remove(pcb)) {
+            removed = true;
+        }
+        
+        // 如果确实移除了进程，记录日志
+        if (removed) {
+            log.info("进程{}已从调度器移除", pcb.getPid());
+        }
+        
+        return removed;
+    }
 
 }

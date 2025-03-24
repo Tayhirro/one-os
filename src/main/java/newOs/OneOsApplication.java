@@ -13,10 +13,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class OneOsApplication{
 
 	public static void main(String[] args) {
-		ConfigurableApplicationContext context = SpringApplication.run(OneOsApplication.class, args);
-
-
-
+		SpringApplication application = new SpringApplication(OneOsApplication.class);
+		// 显式启用循环依赖支持
+		application.setAllowCircularReferences(true);
+		ConfigurableApplicationContext context = application.run(args);
 	}
 }
 
