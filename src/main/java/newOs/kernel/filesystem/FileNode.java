@@ -1,27 +1,27 @@
 package newOs.kernel.filesystem;
 
+import lombok.Data;
 import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
+@Data
 public class FileNode {
     public enum FileType { FILE, DIRECTORY }
 
-    @Getter
+
     private int id;
-    @Getter
+
     private String fileName; //文件名
-    @Getter
+
     private FileType fileType; //文件类型
-    @Getter
+
     private List<Integer> blockNumbers; //文件存储块号
-    @Getter
+
     private int size; //文件大小
-    @Getter
+
     private FileNode parent; //父结点
-    @Getter
     private List<FileNode> children; //孩子结点
 
     public FileNode(String fileName, FileType fileType) {

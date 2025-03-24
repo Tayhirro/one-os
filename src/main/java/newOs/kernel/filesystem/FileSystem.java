@@ -1,6 +1,8 @@
 package newOs.kernel.filesystem;
 
+import lombok.Data;
 import lombok.Getter;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,14 +10,14 @@ import java.util.List;
 import static newOs.kernel.filesystem.FileNode.FileType.DIRECTORY;
 import static newOs.kernel.filesystem.FileNode.FileType.FILE;
 
-
+@Component
+@Data
 public class FileSystem {
     private static final FileReader fileReader = FileReader.getFileReader();
     //private static final FileWriter fileWriter = FileWriter.getInstance();
 
-    @Getter
+
     private FileNode root;
-    @Getter
     private FileNode current_node;
     private String current_path;
     private static FileSystem fileSystem;

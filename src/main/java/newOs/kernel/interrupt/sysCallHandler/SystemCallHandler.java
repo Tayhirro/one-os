@@ -61,7 +61,6 @@ public class SystemCallHandler implements ISR<InterruptSysCallInfo> {
                 case CLOSE_FILE:
                     return deviceManager.closeDevice(deviceInfo.getDeviceName(),deviceInfo.getPcb());
                 case READ_FILE:
-
                     return deviceManager.readDevice(deviceInfo.getDeviceName(),deviceInfo.getPcb());
                 case WRITE_FILE:
                     return deviceManager.writeDevice(deviceInfo.getDeviceName(),deviceInfo.getPcb(),deviceInfo.getDeviceInfo());
