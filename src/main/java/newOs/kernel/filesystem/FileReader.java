@@ -1,6 +1,7 @@
 package newOs.kernel.filesystem;
 
 import newOs.component.memory.protected1.PCB;
+import org.springframework.stereotype.Component;
 
 import java.io.OutputStream;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import static newOs.kernel.filesystem.FileNode.FileType.FILE;
 /**
  * 文件读取器
  */
+@Component
 public class FileReader {
     private static FileReader fileReader;
     private final FileSystem fileSystem = FileSystem.getFileSystem();

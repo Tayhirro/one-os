@@ -110,6 +110,7 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
         if (!isBusy) {
             // 设备空闲，直接使用
+            isWrite = 0; // 设置读取标志
             isBusy = true;
             nowPcb = pcb;
             System.out.println("进程 " + pcb.getCoreId() +"-"+pcb.getPid()+ " 开始对设备进行   读    操作 " + deviceName);

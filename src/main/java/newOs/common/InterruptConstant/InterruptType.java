@@ -33,7 +33,8 @@ public enum InterruptType {
     PARALLEL_PORT(36),
     FLOPPY_DISK(38),
     HARD_DISK(39),
-    /*IO中断*/
+
+    /**IO中断**/
     IO_INTERRUPT(40),
 
 
