@@ -57,7 +57,7 @@ public class ProcessManager{
     public ProcessInfoReturnImplDTO createProcess(String processName, JSONObject args, String[] instructions){
         // 创建进程
         int pid = ProcessTool.getPid(processName);
-        // 创建进程pcb，放进pcbTable
+        // 创建进程pcb，放进pcbTable-
 
         //创建时间戳
         long timestamp = System.currentTimeMillis();
