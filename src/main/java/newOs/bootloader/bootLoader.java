@@ -13,7 +13,7 @@ import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.process.ProcessManager;
 import newOs.kernel.process.scheduler.ProcessScheduler;
-import newOs.service.ServiaceImpl.ProcessManageServiceImpl;
+import newOs.service.interfaces.ProcessManageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -37,7 +37,7 @@ public class bootLoader implements ApplicationRunner {
     private final X86CPUSimulator x86CPUSimulator;
     private final ProtectedMemory protectedMemory;
     private ProcessScheduler processScheduler;
-    private final ProcessManageServiceImpl processManageServiceImpl;
+    private final ProcessManageService processManageService;
     private final Disk disk;
 
     //注入初始化组件
@@ -48,12 +48,12 @@ public class bootLoader implements ApplicationRunner {
     @Autowired
     public bootLoader(X86CPUSimulator x86CPUSimulator,
                       ProtectedMemory protectedMemory,
-                      ProcessManageServiceImpl processManageServiceImpl,
+                      ProcessManageService processManageService,
                       X86IDTableCreate x86IDTableCreate,
                       Disk disk){
         this.x86CPUSimulator = x86CPUSimulator;
         this.protectedMemory = protectedMemory;
-        this.processManageServiceImpl = processManageServiceImpl;
+        this.processManageService = processManageService;
         this.x86IDTableCreate = x86IDTableCreate;
         this.disk = disk;
     }
@@ -387,11 +387,11 @@ public class bootLoader implements ApplicationRunner {
             e.printStackTrace();
         }
 
-        processManageServiceImpl.executeProcess("process1");
-        processManageServiceImpl.executeProcess("process2");
-        processManageServiceImpl.executeProcess("process3");
-        processManageServiceImpl.executeProcess("process4");
-        processManageServiceImpl.executeProcess("process5");
+        processManageService.executeProcess("process1");
+        processManageService.executeProcess("process2");
+        processManageService.executeProcess("process3");
+        processManageService.executeProcess("process4");
+        processManageService.executeProcess("process5");
 
         
 
