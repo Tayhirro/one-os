@@ -172,8 +172,8 @@ public class bootLoader implements ApplicationRunner {
 
 
 
-        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst1,-1,-1,-1,-1);
-        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst2,-1,-1,-1,-1);
+        PCB pcb1 = new PCB(pid1, "process1", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
+        PCB pcb2 = new PCB(pid2, "process2", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
         PCB pcb3 = new PCB(pid3, "process3", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
         PCB pcb4 = new PCB(pid4, "process4", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
         PCB pcb5 = new PCB(pid5, "process5", 0, -1,CREATED,-1 ,-1 ,-1, 3, -1,-1,-1,3, inst3,-1,-1,-1,-1);
