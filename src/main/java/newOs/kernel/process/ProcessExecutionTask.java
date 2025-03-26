@@ -127,8 +127,14 @@ public class ProcessExecutionTask implements Runnable{
             switch (command){
                 case "M":
                     //设置PCB大小信息
+                    !MemoryInfoImplDTO memoryInfoImplDTO = new MemoryInfoImplDTO(pcb);
+                    !//设置memoryInfoImplDTO相关信息
+                    !//调用系统中断
+                    !MemoryInfoReturnImplDTO memoryInfoReturnImplDTO = (MemoryInfoReturnImplDTO) interruptController.triggerSystemCall(memoryInfoImplDTO);
+                    !//执行一些相关操作
 
 
+                    break;
                 case "A":       //进行逻辑地址的解析
                     int logicAddress = Integer.parseInt(parts[1]);
                     // 8 12 12
@@ -137,6 +143,11 @@ public class ProcessExecutionTask implements Runnable{
                     }
                     byte[] byteArray = new byte[4];
                     System.out.println("----------------------testtestetset:   " + pcb.getSBTR());
+                    !MemoryInfoImplDTO memoryInfoImplDTO = new MemoryInfoImplDTO(pcb);
+                    !//设置相关信息
+                    !//调用系统中断
+                    !MemoryInfoReturnImplDTO memoryInfoReturnImplDTO = (MemoryInfoReturnImplDTO) interruptController.triggerSystemCall(memoryInfoImplDTO);
+                    //后续处理 ，比如访问成功
 
                     //申请资源
                     break;
@@ -225,6 +236,11 @@ public class ProcessExecutionTask implements Runnable{
         }catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.info("Task was interrupted.");
+        }catch !(MemoryException e){
+            //内存访问错误，直接自然终止
+            //调用释放内存函数
+            !比如MemoryManegement.allocate释放内存啥的   !!!注意一下依赖----目前是本类（这个进程类获得控制权，所以memoryManegement类不能注入此类）
+            Sscheduler.Finnished(pcb); //移出队列
         }
         catch (Exception e){
             e.printStackTrace();
