@@ -17,18 +17,10 @@ public class ProcessExecutionTaskFactory {
     private InterruptController interruptController;
 
     @Autowired
-    public ProcessExecutionTaskFactory(ISRHandler handlerISR, ProtectedMemory protectedMemory){
+    public ProcessExecutionTaskFactory(ISRHandler handlerISR, ProtectedMemory protectedMemory,SideScheduler sideScheduler,InterruptController interruptController){
         this.ISRHandler = handlerISR;
         this.protectedMemory = protectedMemory;
-    }
-    
-    @Autowired
-    public void setSideScheduler(SideScheduler sideScheduler) {
         this.sideScheduler = sideScheduler;
-    }
-    
-    @Autowired
-    public void setInterruptController(InterruptController interruptController) {
         this.interruptController = interruptController;
     }
 

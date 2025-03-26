@@ -40,12 +40,7 @@ public class ProcessManagerImpl implements ProcessManager {
     
     // CPU模拟器
     private final X86CPUSimulator x86CPUSimulator;
-    
-    // 进程执行任务工厂
-    private ProcessExecutionTaskFactory processExecutionTaskFactory;
-    
-    // 进程调度器
-    private ProcessScheduler processScheduler;
+
     
     // PCB表和进程队列的引用
     private final HashMap<Integer, PCB> pcbTable;
@@ -74,24 +69,7 @@ public class ProcessManagerImpl implements ProcessManager {
         this.waitingQueue = protectedMemory.getWaitingQueue();
         this.readySJFQueue = protectedMemory.getReadySJFQueue();
     }
-    
-    /**
-     * 设置进程执行任务工厂
-     * @param processExecutionTaskFactory 进程执行任务工厂
-     */
-    @Autowired
-    public void setProcessExecutionTaskFactory(ProcessExecutionTaskFactory processExecutionTaskFactory) {
-        this.processExecutionTaskFactory = processExecutionTaskFactory;
-    }
-    
-    /**
-     * 设置进程调度器
-     * @param processScheduler 进程调度器
-     */
-    @Autowired
-    public void setProcessScheduler(ProcessScheduler processScheduler) {
-        this.processScheduler = processScheduler;
-    }
+
     
     /**
      * 设置内存保护组件

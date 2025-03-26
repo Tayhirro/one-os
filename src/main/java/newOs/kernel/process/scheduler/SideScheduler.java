@@ -47,8 +47,6 @@ public class SideScheduler {
     private final ISRHandler isrHandler;
 
     private InterruptController interruptController;
-    
-    private ProcessExecutionTaskFactory processExecutionTaskFactory;
 
     /*
     * 1实现调度下一个进程 ----放入runningQueue
@@ -57,7 +55,7 @@ public class SideScheduler {
      */
 
     @Autowired
-    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler){
+    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler,InterruptController interruptController){
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
         this.waitingQueue = protectedMemory.getWaitingQueue();
@@ -70,16 +68,7 @@ public class SideScheduler {
         this.isrHandler = isrHandler;
         this.irlTable = protectedMemory.getIrlTable();
         this.irlIO = protectedMemory.getIrlIO();
-    }
-    
-    @Autowired
-    public void setInterruptController(InterruptController interruptController) {
         this.interruptController = interruptController;
-    }
-    
-    @Autowired
-    public void setProcessExecutionTaskFactory(ProcessExecutionTaskFactory processExecutionTaskFactory) {
-        this.processExecutionTaskFactory = processExecutionTaskFactory;
     }
 
     public void schedulerProcess(PCB pcb){
