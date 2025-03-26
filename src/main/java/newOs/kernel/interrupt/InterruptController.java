@@ -24,7 +24,6 @@ public class InterruptController {
     private final ConcurrentHashMap<InterruptType, ISR> IDT; // 中断描述符表
 
 
-
     @Autowired
     public InterruptController(ProtectedMemory protectedMemory) {
         IDT = protectedMemory.getIDT();
@@ -42,9 +41,18 @@ public class InterruptController {
         IDT.get(TIMER).execute(timerInfo);
 
     }
-
     //返回信息trigger
     public void trigger(DeviceInfoReturnImplDTO deviceInfoReturnImplDTO) {
         IDT.get(InterruptType.IO_INTERRUPT).execute(deviceInfoReturnImplDTO);
     }
+
+    public InterruptMissTLBReturnInfo trigger ...
+    !{
+    !    ...
+    !}
+
+    !public InterruptPageFaultReturnInfo triggerPageFault(InterruptPageFaultInfo pageFaultInfo){
+    !       InterruptPageFaultReturnInfo interuptPageFaultReturnInfo = IDT.get(InterruptType.PAGE_FAULT).execute(pageFaultInfo);
+    !       return interruptPageFaultReturnInfo;
+    !}
 }
