@@ -118,7 +118,7 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                // **设备写入完成后，生成结果**
+                // **设备写入完成后，生成结果1**
                 System.out.println("设备 " + deviceName + " 写入完成！");
             }
 
