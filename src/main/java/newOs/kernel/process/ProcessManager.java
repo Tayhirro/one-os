@@ -1,190 +1,136 @@
 package newOs.kernel.process;
 
+
 import com.alibaba.fastjson.JSONObject;
+import lombok.Data;
+import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
+import newOs.component.memory.protected1.ProtectedMemory;
 import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
-import newOs.kernel.memory.model.VirtualAddress;
+import newOs.kernel.process.scheduler.ProcessScheduler;
+import newOs.tools.ProcessTool;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-/**
- * 进程管理器接口
- * 定义进程管理相关的核心功能
- */
-public interface ProcessManager {
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 
-    /**
-     * 获取进程堆的起始地址
-     * @param processId 进程ID
-     * @return 堆的起始虚拟地址
-     */
-    VirtualAddress getHeapStart(int processId);
+import static newOs.common.processConstant.processStateConstant.CREATED;
+import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
-    /**
-     * 获取进程堆的当前结束地址
-     * @param processId 进程ID
-     * @return 堆的结束虚拟地址
-     */
-    VirtualAddress getHeapEnd(int processId);
+@Component
+@Data
+public class ProcessManager{
+    //依赖注入:
+    private final HashMap<Integer, PCB> pcbTable;
+    private final Queue<PCB> readyQueue;
+    private final Queue<PCB> runningQueue;
+    private final Queue<PCB> waitingQueue;
+    private final Queue<PCB> readySJFQueue;
+    private final ProtectedMemory protectedMemory;
+    private final X86CPUSimulator x86CPUSimulator;
+    private final ProcessExecutionTaskFactory processExecutionTaskFactory;
+    private final ProcessScheduler processScheduler;
+    //没有实现中级调度
 
-    /**
-     * 获取进程栈的起始地址
-     * @param processId 进程ID
-     * @return 栈的起始虚拟地址
-     */
-    VirtualAddress getStackStart(int processId);
 
-    /**
-     * 获取进程栈的当前结束地址
-     * @param processId 进程ID
-     * @return 栈的结束虚拟地址
-     */
-    VirtualAddress getStackEnd(int processId);
 
-    /**
-     * 获取进程代码段的起始地址
-     * @param processId 进程ID
-     * @return 代码段的起始虚拟地址
-     */
-    VirtualAddress getCodeStart(int processId);
 
-    /**
-     * 获取进程代码段的结束地址
-     * @param processId 进程ID
-     * @return 代码段的结束虚拟地址
-     */
-    VirtualAddress getCodeEnd(int processId);
+    @Autowired
+    public ProcessManager(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ProcessExecutionTaskFactory processExecutionTaskFactory, ProcessScheduler processScheduler){
+        this.pcbTable = protectedMemory.getPcbTable();
+        this.readyQueue = protectedMemory.getReadyQueue();
+        this.runningQueue = protectedMemory.getRunningQueue();
+        this.waitingQueue = protectedMemory.getWaitingQueue();
+        this.readySJFQueue = protectedMemory.getReadySJFQueue();
 
-    /**
-     * 获取进程数据段的起始地址
-     * @param processId 进程ID
-     * @return 数据段的起始虚拟地址
-     */
-    VirtualAddress getDataStart(int processId);
 
-    /**
-     * 获取进程数据段的结束地址
-     * @param processId 进程ID
-     * @return 数据段的结束虚拟地址
-     */
-    VirtualAddress getDataEnd(int processId);
+        this.protectedMemory = protectedMemory;
+        this.x86CPUSimulator = x86CPUSimulator;
+        this.processExecutionTaskFactory = processExecutionTaskFactory;
+        this.processScheduler = processScheduler;
+    }
 
-    /**
-     * 增长进程的堆
-     * @param processId 进程ID
-     * @param size 要增长的字节数
-     * @return 是否增长成功
-     */
-    boolean growHeap(int processId, int size);
+    public ProcessInfoReturnImplDTO createProcess(String processName, JSONObject args, String[] instructions){
+        // 创建进程
+        int pid = ProcessTool.getPid(processName);
+        // 创建进程pcb，放进pcbTable
 
-    /**
-     * 收缩进程的堆
-     * @param processId 进程ID
-     * @param size 要收缩的字节数
-     * @return 是否收缩成功
-     */
-    boolean shrinkHeap(int processId, int size);
+        //创建时间戳
+        long timestamp = System.currentTimeMillis();
+        PCB pcb = new PCB(pid, processName, 0, -1, CREATED, -1, -1, -1, -1, timestamp, -1, -1, 3, null, -1, -1, -1,-1);
 
-    /**
-     * 检查地址是否在进程的有效地址空间内
-     * @param processId 进程ID
-     * @param address 要检查的虚拟地址
-     * @return 是否是有效地址
-     */
-    boolean isValidAddress(int processId, VirtualAddress address);
+        pcbTable.put(pid, pcb);
+        LinkedList<String> list = new LinkedList<>();
+        long expectedTime = 0;
+        //设置pcb的基础内容
+        for (String inst : instructions) {
+            if (inst.charAt(0) == 'M') {
+                pcb.setSize(inst.charAt(2) * 1024);
+            } else {
+                list.add(inst);
+                if (inst.charAt(0) == 'C') {
+                    expectedTime += Long.parseLong(inst.split(" ")[1]);
+                }
+                if (inst.charAt(0) == 'R') {
+                    expectedTime += Long.parseLong(inst.split(" ")[2]);
+                }
+                if (inst.charAt(0) == 'W') {
+                    expectedTime += Long.parseLong(inst.split(" ")[2]);
+                }
+            }
+        }
+        pcb.setInstructions(list.toArray(new String[1]));
+        pcb.setExpectedTime(expectedTime);      //setExpectedtime
+        // 写进文件系统  --暂时可以不用做
+        ProcessInfoReturnImplDTO processRInfo = new ProcessInfoReturnImplDTO();
+        return processRInfo;
+    }
 
-    /**
-     * 进程退出时清理内存资源
-     * @param processId 进程ID
-     */
-    void cleanupProcessMemory(int processId);
+    public void executeProcess(PCB pcb){
+        //
+        try{
+    //        int pageTable = mmu.Allocate(pcb.getPid(), pcb.getSize());
+    //        pcb.setRegister(pageTable);
+            ExecutorService[] cpuSimulatorExecutors = x86CPUSimulator.getExecutors();
+            int i = 1;
+            for(;i<cpuSimulatorExecutors.length;i++){
+                ThreadPoolExecutor executor = (ThreadPoolExecutor) cpuSimulatorExecutors[i];
+                int idleThreads = executor.getCorePoolSize() - executor.getActiveCount();
+                if(idleThreads > 0) {
+                    //有空闲进程
+                    ProcessExecutionTask processExecutionTask = processExecutionTaskFactory.createTask(pcb);
+                    //设置cordid
+                    pcb.setCoreId(i);
+                    //唤醒调度器
+                    cpuSimulatorExecutors[i].submit(processExecutionTask);
+                    break;
+                }
+            }
+            //循环完都没有
+            if(i == cpuSimulatorExecutors.length) {
+                //加入就绪队列
+                System.out.println("进程" + pcb.getCoreId()+"-"+pcb.getPid() + "进入就绪队列");
+                if(strategy.equals("SJRF")||strategy.equals("SJF")){
+                    readySJFQueue.add(pcb);
+                }else{
+                    readyQueue.add(pcb);
+                }
 
-    /**
-     * 获取进程的当前指令指针
-     * @param processId 进程ID
-     * @return 指令指针虚拟地址
-     */
-    VirtualAddress getCurrentInstructionPointer(int processId);
+                x86CPUSimulator.getExecutorServiceReady().get(0).incrementAndGet(); //进行自增
+                System.out.println(x86CPUSimulator.getExecutorServiceReady().get(0).get());
+            }
+        } finally { //延时一段用于 activecount的数值更新
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
-    /**
-     * 获取进程的当前栈指针
-     * @param processId 进程ID
-     * @return 栈指针虚拟地址
-     */
-    VirtualAddress getCurrentStackPointer(int processId);
+    }
 
-    /**
-     * 创建进程
-     * @param processName 进程名称
-     * @param args 参数
-     * @param instructions 指令
-     * @return 进程信息
-     */
-    ProcessInfoReturnImplDTO createProcess(String processName, JSONObject args, String[] instructions);
-
-    /**
-     * 执行进程
-     * @param pcb 进程控制块
-     */
-    void executeProcess(PCB pcb);
-
-    /**
-     * 向进程发送信号
-     * @param pid 进程ID
-     * @param signalName 信号名称
-     * @param message 消息
-     * @return 是否成功
-     */
-    boolean sendSignal(int pid, String signalName, String message);
-
-    /**
-     * 终止进程并清理其内存资源
-     * @param pid 要终止的进程ID
-     * @return 是否成功终止
-     */
-    boolean terminateProcess(int pid);
-
-    /**
-     * 获取进程的内存使用情况
-     * @param pid 进程ID
-     * @return 进程内存使用情况的描述字符串
-     */
-    String getProcessMemoryInfo(int pid);
-
-    /**
-     * 为进程分配额外内存
-     * @param pid 进程ID
-     * @param size 要分配的内存大小(字节)
-     * @return 分配的虚拟地址，失败返回null
-     */
-    VirtualAddress allocateMemoryForProcess(int pid, long size);
-
-    /**
-     * 释放进程的内存
-     * @param pid 进程ID
-     * @param address 要释放的内存地址
-     * @return 是否成功释放
-     */
-    boolean freeProcessMemory(int pid, VirtualAddress address);
-
-    /**
-     * 改变内存段的访问权限
-     * @param pid 进程ID
-     * @param address 内存地址
-     * @param permissions 新的权限字符串 (如 "RW", "RX", "RWX")
-     * @return 是否成功更改
-     */
-    boolean changeMemoryPermissions(int pid, VirtualAddress address, String permissions);
-
-    /**
-     * 检查进程是否存在
-     * @param pid 进程ID
-     * @return 进程是否存在
-     */
-    boolean isProcessExist(int pid);
-
-    /**
-     * 获取进程控制块
-     * @param pid 进程ID
-     * @return 进程控制块，不存在则返回null
-     */
-    PCB getProcess(int pid);
 }

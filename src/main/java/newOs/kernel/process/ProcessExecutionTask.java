@@ -1,5 +1,6 @@
 package newOs.kernel.process;
 
+
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import newOs.common.InterruptConstant.InterruptType;
@@ -12,24 +13,10 @@ import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
 import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
-import newOs.kernel.memory.MemoryManager;
-import newOs.kernel.memory.model.VirtualAddress;
-import newOs.kernel.memory.model.PhysicalAddress;
-import newOs.exception.MemoryException;
-import newOs.exception.MemoryAllocationException;
 import newOs.kernel.process.scheduler.SideScheduler;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import newOs.dto.req.Info.InterruptInfo;
-import newOs.dto.req.Info.MemoryInterruptInfo;
-import java.util.HashMap;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.Map;
-import java.util.List;
-import java.util.Comparator;
-import java.util.ArrayList;
 
 import static newOs.common.processConstant.InstructionConstant.*;
 import static newOs.common.processConstant.processStateConstant.RUNNING;
@@ -58,30 +45,8 @@ public class ProcessExecutionTask implements Runnable{
 
     private final ISRHandler ISRHandler;
     private final InterruptController interruptController;
-    
-    // 添加ApplicationContext引用
-    private static ApplicationContext applicationContext;
-    
-    // 提供静态方法设置ApplicationContext
-    @Autowired
-    public static void setApplicationContext(ApplicationContext context) {
-        ProcessExecutionTask.applicationContext = context;
-    }
-    
-    // 获取MemoryManager实例的辅助方法
-    private MemoryManager getMemoryManager() {
-        if (applicationContext != null) {
-            return applicationContext.getBean(MemoryManager.class);
-        }
-        log.warn("ApplicationContext未设置，无法获取MemoryManager实例");
-        return null;
-    }
 
-    // 获取InterruptController实例的辅助方法
-    private InterruptController getInterruptController() {
-        // 直接返回成员变量中的interruptController实例
-        return this.interruptController;
-    }
+
 
     public ProcessExecutionTask(PCB pcb, ProtectedMemory protectedMemory, ISRHandler ISRHandler, SideScheduler Sscheduler, InterruptController interruptController) {
         this.pcb = pcb;
@@ -104,6 +69,7 @@ public class ProcessExecutionTask implements Runnable{
 
             //对于run， coreID = executeservice-i
 
+
             //0表示未切换，1表示切换后放进就绪队列，2表示切换后放进等待队列
             //模拟流水线切换指令边界
             int isSwitchProcess = 0;
@@ -112,12 +78,6 @@ public class ProcessExecutionTask implements Runnable{
 
             //获取当前线程的id
             for (int ir = pcb.getIr(); ir < instructions.length; ir = pcb.getIr()) {
-                // 在执行每条指令前检查进程是否已被终止
-                if (!isProcessExist(pcb.getPid())) {
-                    log.info("进程{}已终止，停止执行任务", pcb.getPid());
-                    break; // 终止循环，不再执行后续指令
-                }
-                
                 String instruction = instructions[ir];
                 //执行Q退出的时候，不需要检测时间片是否用完
                 if (instruction.equals(Q)) {
@@ -126,12 +86,6 @@ public class ProcessExecutionTask implements Runnable{
                 } else {
                     // 执行到IO指令，一直获取不到文件资源，都会导致进程切换，ir不会+1
                     isSwitchProcess = executeInstruction(instruction);
-                    
-                    // 如果返回-1，表示进程已终止
-                    if (isSwitchProcess == -1) {
-                        log.info("进程{}已终止，停止执行任务", pcb.getPid());
-                        break;
-                    }
 
                     //2 表示进行IO等待
                     if (isSwitchProcess == 2) {
@@ -166,197 +120,25 @@ public class ProcessExecutionTask implements Runnable{
 
     private int executeInstruction(String instruction) {
         int isSwitchProcess = 0;
-        
-        // 在执行指令前检查进程是否已被终止
-        if (!isProcessExist(pcb.getPid())) {
-            log.info("进程{}已终止，不执行指令: {}", pcb.getPid(), instruction);
-            return -1; // 返回-1表示进程已终止
-        }
-        
         String [] parts = instruction.split(" ");
         String command = parts[0];
         try{
             log.info("当前执行指令：" + instruction);
             switch (command){
                 case "M":
-                    // 声明进程所需内存空间
-                    String[] memoryParts = instruction.split(" ");
-                    if (memoryParts.length < 2) {
-                        log.error("M指令参数不足！");
-                        return isSwitchProcess; // 返回当前切换状态
-                    }
-                    
-                    try {
-                        int memorySize = Integer.parseInt(memoryParts[1]);
-                        log.info("进程{}声明需要{}字节内存", pcb.getPid(), memorySize);
-                        
-                        // 设置进程PCB中的内存大小
-                        pcb.setSize(memorySize);
-                        
-                        // 实际分配内存
-                        MemoryManager memoryManager = getMemoryManager();
-                        
-                        // 分配内存，并记录到PCB的内存分配表中
-                        VirtualAddress virtualAddress = memoryManager.allocateMemory(pcb.getPid(), memorySize);
-                        if (virtualAddress != null) {
-                            log.info("进程{}成功分配{}字节内存，起始地址=0x{}", 
-                                    pcb.getPid(), memorySize, Long.toHexString(virtualAddress.getValue()));
-                            
-                            // 确保PCB的内存分配表已初始化
-                            if (pcb.getMemoryAllocationMap() == null) {
-                                pcb.setMemoryAllocationMap(new HashMap<>());
-                            }
-                            
-                            // 更新PCB的内存分配表
-                            pcb.getMemoryAllocationMap().put(virtualAddress, (long)memorySize);
-                        } else {
-                            log.error("进程{}分配{}字节内存失败", pcb.getPid(), memorySize);
-                        }
-                    } catch (NumberFormatException e) {
-                        log.error("M指令内存大小格式错误: {}", memoryParts[1]);
-                    } catch (Exception e) {
-                        log.error("M指令执行异常: {}", e.getMessage());
-                    }
-                    break;
+                    //设置PCB大小信息
 
-                case "A":
-                    // 模拟访问内存
-                    String[] memoryAccessParts = instruction.split(" ");
-                    if (memoryAccessParts.length < 2) {
-                        log.error("A指令参数不足！");
-                        return isSwitchProcess; // 返回当前切换状态
-                    }
 
-                    // 解析访问的相对地址
-                    String addressStr = memoryAccessParts[1];
-                    try {
-                        long relativeAddress = Long.parseLong(addressStr);
-                        boolean isWrite = memoryAccessParts.length > 2 && "write".equalsIgnoreCase(memoryAccessParts[2]);
-                        
-                        // 获取进程的内存分配表
-                        Map<VirtualAddress, Long> memoryMap = pcb.getMemoryAllocationMap();
-                        if (memoryMap == null || memoryMap.isEmpty()) {
-                            log.error("进程{}没有分配内存，无法访问地址", pcb.getPid());
-                            getInterruptController().triggerSegmentationFault(pcb.getPid(), new VirtualAddress(relativeAddress));
-                            return isSwitchProcess;
-                        }
-                        
-                        // 获取进程的所有内存块，按虚拟地址排序
-                        List<Map.Entry<VirtualAddress, Long>> sortedMemoryBlocks = new ArrayList<>(memoryMap.entrySet());
-                        sortedMemoryBlocks.sort(Comparator.comparingLong(entry -> entry.getKey().getValue()));
-                        
-                        // 确定相对地址应该映射到哪个内存块
-                        VirtualAddress targetBlockAddress = null;
-                        long blockSize = 0;
-                        long currentOffset = 0;
-                        
-                        for (Map.Entry<VirtualAddress, Long> entry : sortedMemoryBlocks) {
-                            VirtualAddress blockStart = entry.getKey();
-                            long size = entry.getValue();
-                            
-                            // 如果相对地址在当前块范围内
-                            if (relativeAddress >= currentOffset && relativeAddress < currentOffset + size) {
-                                targetBlockAddress = blockStart;
-                                blockSize = size;
-                                // 调整相对地址为块内偏移
-                                relativeAddress = relativeAddress - currentOffset;
-                                break;
-                            }
-                            
-                            // 增加累计偏移量
-                            currentOffset += size;
-                        }
-                        
-                        // 如果没有找到匹配的块
-                        if (targetBlockAddress == null) {
-                            log.error("进程{}的相对地址0x{}超出所有分配内存范围", 
-                                    pcb.getPid(), Long.toHexString(relativeAddress));
-                            getInterruptController().triggerSegmentationFault(
-                                    pcb.getPid(), new VirtualAddress(relativeAddress));
-                            return isSwitchProcess;
-                        }
-                        
-                        // 计算实际虚拟地址 = 目标块起始地址 + 块内偏移
-                        long actualAddress = targetBlockAddress.getValue() + relativeAddress;
-                        VirtualAddress virtualAddress = new VirtualAddress(actualAddress);
-                        
-                        log.info("进程{}尝试{}虚拟地址0x{}（相对地址0x{} + 块基址0x{}）", 
-                                pcb.getPid(), 
-                                isWrite ? "写入" : "读取", 
-                                Long.toHexString(actualAddress),
-                                Long.toHexString(relativeAddress),
-                                Long.toHexString(targetBlockAddress.getValue()));
-                        
-                        // 验证计算出的地址是否在有效范围内
-                        boolean addressValid = actualAddress >= targetBlockAddress.getValue() && 
-                                               actualAddress < targetBlockAddress.getValue() + blockSize;
-                        
-                        if (!addressValid) {
-                            log.error("进程{}访问无效地址0x{}，触发段错误！", 
-                                    pcb.getPid(), Long.toHexString(actualAddress));
-                            
-                            // 触发段错误中断
-                            getInterruptController().triggerSegmentationFault(pcb.getPid(), virtualAddress);
-                            return isSwitchProcess; // 返回当前切换状态
-                        }
-                        
-                        // 检查地址映射是否存在，没有则触发缺页异常
-                        MemoryManager memoryManager = getMemoryManager();
-                        boolean addressMapped = false;
-                        
-                        try {
-                            // 尝试进行地址转换，这会抛出缺页异常如果页不在内存中
-                            PhysicalAddress physicalAddress = memoryManager.translateVirtualToPhysical(pcb.getPid(), virtualAddress);
-                            if (physicalAddress != null) {
-                                addressMapped = true;
-                                log.info("进程{}成功访问虚拟地址0x{}，对应物理地址0x{}", 
-                                        pcb.getPid(), 
-                                        Long.toHexString(virtualAddress.getValue()),
-                                        Long.toHexString(physicalAddress.getValue()));
-                            }
-                        } catch (Exception e) {
-                            // 可能是缺页异常
-                            log.info("进程{}访问地址0x{}时遇到异常: {}", 
-                                    pcb.getPid(), Long.toHexString(actualAddress), e.getMessage());
-                            
-                            // 触发缺页中断，无论是什么类型的异常
-                            MemoryInterruptInfo memoryInfo = new MemoryInterruptInfo();
-                            memoryInfo.setProcessId(pcb.getPid());
-                            memoryInfo.setVirtualAddress(virtualAddress);
-                            memoryInfo.setAdditionalInfo("isWrite", isWrite);
-                            
-                            getInterruptController().triggerInterrupt(
-                                    InterruptType.PAGE_FAULT, 
-                                    memoryInfo);
-                            
-                            // 中断处理后，重试地址转换
-                            try {
-                                PhysicalAddress physicalAddress = memoryManager.translateVirtualToPhysical(
-                                        pcb.getPid(), virtualAddress);
-                                
-                                if (physicalAddress != null) {
-                                    addressMapped = true;
-                                    log.info("缺页处理后，进程{}成功访问虚拟地址0x{}，对应物理地址0x{}", 
-                                            pcb.getPid(), 
-                                            Long.toHexString(virtualAddress.getValue()),
-                                            Long.toHexString(physicalAddress.getValue()));
-                                }
-                            } catch (Exception retryException) {
-                                // 重试失败
-                                log.error("缺页处理后重试失败: {}", retryException.getMessage());
-                            }
-                        }
-                        
-                        if (!addressMapped) {
-                            log.error("进程{}无法访问地址0x{}，即使在缺页处理后", 
-                                    pcb.getPid(), Long.toHexString(actualAddress));
-                        }
-                        
-                    } catch (NumberFormatException e) {
-                        log.error("A指令地址格式错误: {}", addressStr);
-                    } catch (Exception e) {
-                        log.error("A指令执行异常: {}", e.getMessage());
+                case "A":       //进行逻辑地址的解析
+                    int logicAddress = Integer.parseInt(parts[1]);
+                    // 8 12 12
+                    if (logicAddress == 8024) {
+                        System.out.println("nihoa");
                     }
+                    byte[] byteArray = new byte[4];
+                    System.out.println("----------------------testtestetset:   " + pcb.getSBTR());
+
+                    //申请资源
                     break;
                 case "C":
                     int computeTime = Integer.parseInt(parts[1]);
@@ -448,19 +230,6 @@ public class ProcessExecutionTask implements Runnable{
             e.printStackTrace();
         }
         return isSwitchProcess;
-    }
-
-    // 检查进程是否存在
-    private boolean isProcessExist(int pid) {
-        try {
-            // 最简单的方法：查询当前PCB的pid是否与传入的pid匹配
-            // 由于每个ProcessExecutionTask只负责一个进程，我们只需要检查当前的pcb是否有效
-            return pcb != null && pcb.getPid() == pid && pcb.getState() != null && !pcb.getState().equals(TERMINATED);
-        } catch (Exception e) {
-            // 发生异常时，安全地返回false
-            log.error("检查进程{}是否存在时出错: {}", pid, e.getMessage());
-            return false;
-        }
     }
 
 }

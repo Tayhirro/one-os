@@ -46,9 +46,7 @@ public class SideScheduler {
 
     private final ISRHandler isrHandler;
 
-    private InterruptController interruptController;
-    
-    private ProcessExecutionTaskFactory processExecutionTaskFactory;
+    private final InterruptController interruptController;
 
     /*
     * 1实现调度下一个进程 ----放入runningQueue
@@ -56,8 +54,13 @@ public class SideScheduler {
     *
      */
 
+
+
     @Autowired
-    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler){
+    public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler, InterruptController interruptController){
+
+
+
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
         this.waitingQueue = protectedMemory.getWaitingQueue();
@@ -65,22 +68,19 @@ public class SideScheduler {
         this.mediumPriorityQueue = protectedMemory.getMediumPriorityQueue();
         this.lowPriorityQueue = protectedMemory.getLowPriorityQueue();
         this.readySJFQueue = protectedMemory.getReadySJFQueue();
+
+
         this.protectedMemory = protectedMemory;
+        this.irlTable = protectedMemory.getIrlTable();
+        this.irlIO  = protectedMemory.getIrlIO();
+
+        //用于创建进程
         this.x86CPUSimulator = x86CPUSimulator;
         this.isrHandler = isrHandler;
-        this.irlTable = protectedMemory.getIrlTable();
-        this.irlIO = protectedMemory.getIrlIO();
-    }
-    
-    @Autowired
-    public void setInterruptController(InterruptController interruptController) {
+
         this.interruptController = interruptController;
     }
-    
-    @Autowired
-    public void setProcessExecutionTaskFactory(ProcessExecutionTaskFactory processExecutionTaskFactory) {
-        this.processExecutionTaskFactory = processExecutionTaskFactory;
-    }
+
 
     public void schedulerProcess(PCB pcb){
 
@@ -314,7 +314,7 @@ public class SideScheduler {
 
     @Scheduled(fixedRate = 1000) // 每隔 1 秒执行一次
     public void loadBalance() {
-        // executorServiceReady: 其中第0个一般可能是"新进/未分配"的数量，
+        // executorServiceReady: 其中第0个一般可能是“新进/未分配”的数量，
         // 后续1~n个表示各个核心的负载统计(ready中的PCB数量、或者其他衡量标准)
         // 先把这几个 AtomicInteger 的值取出来
         int numberOfCores = x86CPUSimulator.getExecutors().length;  // 假设=5
