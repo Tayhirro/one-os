@@ -15,12 +15,9 @@ import newOs.kernel.interrupt.hardwareHandler.ISRHandler;
 import newOs.kernel.memory.MemoryManager;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.model.PhysicalAddress;
-import newOs.exception.MemoryException;
-import newOs.exception.MemoryAllocationException;
 import newOs.kernel.process.scheduler.SideScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.MemoryInterruptInfo;
 import java.util.HashMap;
 
@@ -32,9 +29,7 @@ import java.util.Comparator;
 import java.util.ArrayList;
 
 import static newOs.common.processConstant.InstructionConstant.*;
-import static newOs.common.processConstant.processStateConstant.RUNNING;
 import static newOs.common.processConstant.processStateConstant.TERMINATED;
-import static newOs.kernel.process.scheduler.ProcessScheduler.strategy;
 
 
 @Slf4j
@@ -421,7 +416,6 @@ public class ProcessExecutionTask implements Runnable{
 //                    deviceInfo4.setInterruptType(InterruptType.SYSTEM_CALL);
 //                    deviceInfo4.setSystemCallType(SystemCallType.CLOSE_FILE);
 //                    deviceInfo4.setPcb(pcb);
-
                     break;
 
                 case "Q":

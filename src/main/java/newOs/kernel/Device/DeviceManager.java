@@ -1,4 +1,4 @@
-package newOs.kernel.device;
+package newOs.kernel.Device;
 
 
 import com.alibaba.fastjson.JSONObject;
@@ -7,15 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
-import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
-import newOs.kernel.device.DeviceImpl.DiskDriverImpl;
+import newOs.kernel.Device.DeviceImpl.DiskDriverImpl;
 import newOs.kernel.interrupt.InterruptController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -39,7 +37,7 @@ public class DeviceManager {
     }
 
 
-    public DeviceInfoReturnImplDTO openDevice(String deviceName,PCB pcb){
+    public DeviceInfoReturnImplDTO openDevice(String deviceName, PCB pcb){
         // 打开设备
         DeviceInfoReturnImplDTO deviceReturnInfo = new DeviceInfoReturnImplDTO();
         Optional<DeviceDriver> foundDevice = protectedMemory.getDeviceQueue().stream()
@@ -54,7 +52,7 @@ public class DeviceManager {
         return  deviceReturnInfo;
     }
 
-    public DeviceInfoReturnImplDTO closeDevice(String deviceName,PCB pcb){
+    public DeviceInfoReturnImplDTO closeDevice(String deviceName, PCB pcb){
         // 关闭设备
         // 1. 从PCB中获取进程的设备请求队列
         // 2. 将设备请求加入设备请求队列

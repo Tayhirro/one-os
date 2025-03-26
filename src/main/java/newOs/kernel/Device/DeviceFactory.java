@@ -1,9 +1,9 @@
-package newOs.kernel.device;
+package newOs.kernel.Device;
 
 import lombok.Data;
 import newOs.component.memory.protected1.ProtectedMemory;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
-import newOs.kernel.device.DeviceImpl.DeviceDriverImpl;
+import newOs.kernel.Device.DeviceImpl.DeviceDriverImpl;
 import newOs.kernel.interrupt.InterruptController;
 import newOs.component.device.Device;
 import org.springframework.beans.factory.annotation.Autowired;

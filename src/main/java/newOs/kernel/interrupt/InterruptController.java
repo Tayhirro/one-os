@@ -3,7 +3,6 @@ package newOs.kernel.interrupt;
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.component.memory.protected1.ProtectedMemory;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
-import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.dto.req.Info.MemoryInterruptInfo;
@@ -22,7 +21,6 @@ import static newOs.common.InterruptConstant.InterruptType.SYSTEM_CALL;
 import static newOs.common.InterruptConstant.InterruptType.TIMER;
 import static newOs.common.InterruptConstant.InterruptType.PAGE_FAULT;
 import static newOs.common.InterruptConstant.InterruptType.GENERAL_PROTECTION_FAULT;
-import static newOs.common.InterruptConstant.InterruptType.IO_INTERRUPT;
 
 // InterruptController.java
 @Component
@@ -35,23 +33,14 @@ public class InterruptController {
     private MemoryProtectionHandler memoryProtectionHandler;
 
     @Autowired
-    public InterruptController(ProtectedMemory protectedMemory) {
+    public InterruptController(ProtectedMemory protectedMemory,PageFaultHandler pageFaultHandler,MemoryProtectionHandler memoryProtectionHandler) {
         IDT = protectedMemory.getIDT();
-    }
-    
-    @Autowired
-    public void setPageFaultHandler(PageFaultHandler pageFaultHandler) {
         this.pageFaultHandler = pageFaultHandler;
-        // 如果IDT已经初始化，则注册处理程序
-        if (IDT != null) {
+        this.memoryProtectionHandler = memoryProtectionHandler;
+        if(IDT != null){
             registerMemoryInterruptHandlers();
             registerTimerInterruptHandler();
         }
-    }
-    
-    @Autowired
-    public void setMemoryProtectionHandler(MemoryProtectionHandler memoryProtectionHandler) {
-        this.memoryProtectionHandler = memoryProtectionHandler;
     }
     
     /**
@@ -77,7 +66,7 @@ public class InterruptController {
         }
     }
 
-    @SuppressWarnings("unchecked")
+
     public InterruptSysCallInfo triggerSystemCall(InterruptSysCallInfo sysCallInfo) {    //对系统中断的处理
         //默认是0x80，直接调用SytemCallHandler
         ISR<InterruptSysCallInfo> handler = (ISR<InterruptSysCallInfo>) IDT.get(SYSTEM_CALL);
@@ -85,7 +74,7 @@ public class InterruptController {
         return (InterruptSysCallInfo) interruptInfo;
     }
 
-    @SuppressWarnings("unchecked")
+
     public void triggerTimer(TimerInfo timerInfo) {
         //默认是0x20，直接调用TimerHandler
         ISR<TimerInfo> handler = (ISR<TimerInfo>) IDT.get(TIMER);
@@ -93,12 +82,14 @@ public class InterruptController {
     }
 
     //返回信息trigger
-    @SuppressWarnings("unchecked")
+
     public void trigger(DeviceInfoReturnImplDTO deviceInfoReturnImplDTO) {
         ISR<DeviceInfoReturnImplDTO> handler = (ISR<DeviceInfoReturnImplDTO>) IDT.get(InterruptType.IO_INTERRUPT);
         handler.execute(deviceInfoReturnImplDTO);
     }
-    
+
+
+
     private void registerMemoryInterruptHandlers() {
         // 注册缺页中断处理程序
         if (!IDT.containsKey(PAGE_FAULT)) {

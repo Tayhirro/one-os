@@ -6,12 +6,10 @@ import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.device.Disk;
 import newOs.component.memory.protected1.PCB;
 import newOs.component.memory.protected1.ProtectedMemory;
-import newOs.kernel.device.DeviceDriver;
-import newOs.kernel.device.DeviceImpl.DeviceDriverImpl;
-import newOs.kernel.device.DeviceImpl.DiskDriverImpl;
+import newOs.kernel.Device.DeviceDriver;
+import newOs.kernel.Device.DeviceImpl.DiskDriverImpl;
 import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.memory.model.VirtualAddress;
-import newOs.kernel.process.ProcessManager;
 import newOs.kernel.process.scheduler.ProcessScheduler;
 import newOs.service.interfaces.ProcessManageService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +17,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.HashMap;
@@ -195,9 +192,9 @@ public class bootLoader implements ApplicationRunner {
                 "OPEN disk1",
                 "READ disk1",
                 "CLOSE disk1",
-                "A 10240",
+                "A 1024",
                 "C 1000",
-                "A 10240",
+                "A 1024",
                 "Q"
         };
         int pid1 = getPid("process1");
@@ -223,7 +220,7 @@ public class bootLoader implements ApplicationRunner {
         pcb1.setRemainingTime(-1);
         pcb1.setExpectedTime(-1);
         pcb1.setPriority(3);
-        pcb1.setInstructions(inst1);
+        pcb1.setInstructions(inst3);
         pcb1.setSwapInTime(-1);
         pcb1.setSwapOutTime(-1);
         pcb1.setPageFaultRate(-1);
@@ -247,7 +244,7 @@ public class bootLoader implements ApplicationRunner {
         pcb2.setRemainingTime(-1);
         pcb2.setExpectedTime(-1);
         pcb2.setPriority(3);
-        pcb2.setInstructions(inst2);
+        pcb2.setInstructions(inst3);
         pcb2.setSwapInTime(-1);
         pcb2.setSwapOutTime(-1);
         pcb2.setPageFaultRate(-1);

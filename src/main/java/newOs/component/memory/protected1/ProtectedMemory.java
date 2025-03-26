@@ -5,14 +5,13 @@ import lombok.Data;
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.component.cpu.Interrupt.InterruptRequestLine;
 import newOs.dto.req.Info.InterruptInfo;
-import newOs.kernel.device.DeviceDriver;
+import newOs.kernel.Device.DeviceDriver;
 import newOs.kernel.interrupt.ISR;
 import org.springframework.stereotype.Component;
 
 import newOs.kernel.memory.MemoryManager;
 import newOs.kernel.memory.PhysicalMemory;
 import newOs.kernel.memory.model.VirtualAddress;
-import newOs.kernel.memory.model.PhysicalAddress;
 import newOs.kernel.memory.virtual.PageFrameTable;
 import newOs.kernel.memory.virtual.PageTable;
 import newOs.kernel.memory.monitor.MemoryUsageMonitor;
@@ -138,6 +137,8 @@ public class ProtectedMemory {
         readyQueue = new ConcurrentLinkedQueue<>();
         waitingQueue = new ConcurrentLinkedQueue<>();
 
+
+        //短作业优先调度
         readySJFQueue = new PriorityBlockingQueue<>(10, (o1, o2) -> {
             if (o1.getExpectedTime() > o2.getExpectedTime()) {
                 return 1;

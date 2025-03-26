@@ -8,7 +8,7 @@ import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
 import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.InterruptSysCallInfo;
 import newOs.exception.OSException;
-import newOs.kernel.device.DeviceManager;
+import newOs.kernel.Device.DeviceManager;
 import newOs.kernel.interrupt.ISR;
 import newOs.kernel.process.ProcessManager;
 import org.springframework.beans.factory.annotation.Autowired;

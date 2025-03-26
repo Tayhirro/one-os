@@ -1,11 +1,9 @@
-package newOs.kernel.device;
+package newOs.kernel.Device;
 
 
 import newOs.component.memory.protected1.PCB;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
 import newOs.dto.resp.DeviceManage.DevicePCBQueryAllRespDTO;
-import newOs.dto.resp.DeviceManage.DeviceQueryAllRespDTO;
-import org.springframework.scheduling.annotation.Scheduled;
 
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.model.PhysicalAddress;

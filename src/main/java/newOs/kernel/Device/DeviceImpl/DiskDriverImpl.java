@@ -1,16 +1,14 @@
-package newOs.kernel.device.DeviceImpl;
+package newOs.kernel.Device.DeviceImpl;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.Data;
 import newOs.common.fileSystemConstant.DeviceStatusType;
 import newOs.component.device.Disk;
 import newOs.component.memory.protected1.PCB;
-import newOs.dto.req.Info.InfoImplDTO.DeviceInfoImplDTO;
 import newOs.dto.req.Info.InfoImplDTO.DeviceInfoReturnImplDTO;
-import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.resp.DeviceManage.DevicePCBQueryAllRespDTO;
 import newOs.exception.MemoryException;
-import newOs.kernel.device.DeviceDriver;
+import newOs.kernel.Device.DeviceDriver;
 import newOs.kernel.interrupt.InterruptController;
 import newOs.kernel.memory.model.PhysicalAddress;
 import newOs.kernel.memory.model.VirtualAddress;
@@ -20,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 @Data
 public class DiskDriverImpl implements DeviceDriver, Runnable {
@@ -172,7 +169,7 @@ public class DiskDriverImpl implements DeviceDriver, Runnable {
         }
         return deviceInfoReturnImplDTO;
     }
-    public DeviceInfoReturnImplDTO executeDeviceWriteOperation(JSONObject args,PCB pcb) {
+    public DeviceInfoReturnImplDTO executeDeviceWriteOperation(JSONObject args, PCB pcb) {
         // **写入操作**
         DeviceInfoReturnImplDTO deviceInfoReturnImplDTO = new DeviceInfoReturnImplDTO();
         boolean shouldExecute = false;

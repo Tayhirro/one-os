@@ -214,7 +214,7 @@ public class SideScheduler {
                 highPriorityQueue.remove(pcb);
             }
             readyQueue.add(pcb);
-        }else if(strategy.equals("SRJF")){  //SRJF
+        }else if(strategy.equals("SRJF")){  //SRJF      SJF
             runningQueue.remove(pcb);
             readySJFQueue.add(pcb);
         }else{               //rr
