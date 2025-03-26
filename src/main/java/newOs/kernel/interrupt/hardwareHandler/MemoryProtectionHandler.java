@@ -4,9 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import newOs.common.InterruptConstant.InterruptType;
 import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.MemoryInterruptInfo;
+import newOs.dto.req.Info.InfoImplDTO.InterruptContextDTO;
 import newOs.exception.MemoryProtectionException;
 import newOs.kernel.interrupt.HardwareInterruptHandler;
-import newOs.kernel.interrupt.InterruptContext;
+import newOs.kernel.interrupt.ISR;
 import newOs.kernel.memory.MemoryManager;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.virtual.protection.MemoryProtection;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
-public class MemoryProtectionHandler implements HardwareInterruptHandler {
+public class MemoryProtectionHandler implements HardwareInterruptHandler, ISR<MemoryInterruptInfo> {
 
     /**
      * 内存管理器
@@ -59,88 +60,113 @@ public class MemoryProtectionHandler implements HardwareInterruptHandler {
     }
 
     @Override
-    public boolean handle(InterruptContext context) {
-        if (context == null) {
-            log.error("中断上下文为空，无法处理内存保护中断");
-            return false;
+    public InterruptInfo handle(InterruptInfo info) {
+        if (info == null) {
+            log.error("中断信息为空，无法处理内存保护中断");
+            return null;
         }
         
-        try {
-            // 从中断上下文中获取信息
-            int pid = context.getProcessId();
-            long faultAddress = context.getFaultAddress();
-            boolean isWrite = context.isWriteAccess();
-            boolean isExecute = context.isExecuteAccess();
-            
-            VirtualAddress virtualAddress = new VirtualAddress(faultAddress);
-            
-            log.debug("处理内存保护中断: 进程={}, 虚拟地址={}, 写访问={}, 执行访问={}",
-                    pid, faultAddress, isWrite, isExecute);
-            
-            // 尝试处理保护异常
-            boolean success = memoryProtection.handleProtectionFault(
-                pid, virtualAddress, !isWrite && !isExecute, isWrite, isExecute);
-            
-            if (success) {
-                log.debug("已处理内存保护异常: 进程={}, 虚拟地址={}", pid, faultAddress);
-                return true;
-            }
-            
-            // 如果无法处理，向进程发送段错误信号
-            log.debug("内存保护异常无法处理，发送段错误信号: 进程={}, 虚拟地址={}", pid, faultAddress);
-            // 使用反射确保ProcessManager有这个方法
-            try {
-                processManager.getClass().getMethod("sendSignal", int.class, String.class, String.class)
-                    .invoke(processManager, pid, "SIGSEGV", "内存访问权限不足");
-            } catch (Exception e) {
-                log.error("无法发送段错误信号: {}", e.getMessage());
-                // 如果sendSignal方法不存在，使用其他方式通知进程
-            }
-            
-            return true;
-        } catch (Exception e) {
-            log.error("处理内存保护中断时发生异常: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-    
-    @Override
-    public InterruptInfo handle(InterruptInfo info) {
         if (info instanceof MemoryInterruptInfo) {
             MemoryInterruptInfo memoryInfo = (MemoryInterruptInfo) info;
             
             try {
                 int pid = memoryInfo.getProcessId();
                 String addressStr = memoryInfo.getAddress();
-                long address = Long.parseLong(addressStr.replace("0x", ""), 16);
+                VirtualAddress virtualAddress = memoryInfo.getVirtualAddress();
+                if (virtualAddress == null) {
+                    long address = Long.parseLong(addressStr.replace("0x", ""), 16);
+                    virtualAddress = new VirtualAddress((int)address);
+                }
                 
                 // 获取访问类型
                 String accessType = (String) memoryInfo.getAdditionalInfo("accessType");
+                boolean isRead = "READ".equals(accessType);
                 boolean isWrite = "WRITE".equals(accessType);
                 boolean isExecute = "EXECUTE".equals(accessType);
                 
-                // 创建中断上下文
-                InterruptContext context = new InterruptContext();
-                context.setProcessId(pid);
-                context.setFaultAddress(address);
-                context.setWriteAccess(isWrite);
-                context.setExecuteAccess(isExecute);
-                context.setInterruptType(newOs.kernel.interrupt.InterruptType.GENERAL_PROTECTION);
+                log.debug("处理内存保护中断: 进程={}, 虚拟地址={}, 读访问={}, 写访问={}, 执行访问={}",
+                        pid, virtualAddress, isRead, isWrite, isExecute);
                 
-                // 调用上下文处理方法
-                boolean success = handle(context);
+                // 尝试处理保护异常
+                boolean success = memoryProtection.handleProtectionFault(
+                    pid, virtualAddress, isRead, isWrite, isExecute);
                 
-                // 设置处理结果
-                memoryInfo.setAdditionalInfo("success", success);
+                if (success) {
+                    log.debug("已处理内存保护异常: 进程={}, 虚拟地址={}", pid, virtualAddress);
+                    memoryInfo.setAdditionalInfo("success", true);
+                    return memoryInfo;
+                }
                 
+                // 如果无法处理，向进程发送段错误信号
+                log.debug("内存保护异常无法处理，发送段错误信号: 进程={}, 虚拟地址={}", pid, virtualAddress);
+                try {
+                    processManager.getClass().getMethod("sendSignal", int.class, String.class, String.class)
+                        .invoke(processManager, pid, "SIGSEGV", "内存访问权限不足");
+                } catch (Exception e) {
+                    log.error("无法发送段错误信号: {}", e.getMessage());
+                    // 如果sendSignal方法不存在，使用其他方式通知进程
+                }
+                
+                memoryInfo.setAdditionalInfo("success", false);
+                memoryInfo.setAdditionalInfo("error", "内存访问权限不足");
                 return memoryInfo;
             } catch (Exception e) {
-                log.error("处理内存保护中断信息时发生异常: {}", e.getMessage(), e);
+                log.error("处理内存保护中断时发生异常: {}", e.getMessage(), e);
                 memoryInfo.setAdditionalInfo("error", e.getMessage());
+                memoryInfo.setAdditionalInfo("success", false);
                 return memoryInfo;
+            }
+        } else if (info instanceof InterruptContextDTO) {
+            InterruptContextDTO contextDTO = (InterruptContextDTO) info;
+            
+            try {
+                // 从中断上下文中获取信息
+                int pid = contextDTO.getProcessId();
+                long faultAddress = contextDTO.getFaultAddress();
+                boolean isWrite = contextDTO.isWriteAccess();
+                boolean isExecute = contextDTO.isExecuteAccess();
+                boolean isRead = !isWrite && !isExecute;
+                
+                VirtualAddress virtualAddress = contextDTO.getVirtualAddress();
+                if (virtualAddress == null) {
+                    virtualAddress = new VirtualAddress((int)faultAddress);
+                }
+                
+                log.debug("处理内存保护中断: 进程={}, 虚拟地址={}, 写访问={}, 执行访问={}",
+                        pid, faultAddress, isWrite, isExecute);
+                
+                // 尝试处理保护异常
+                boolean success = memoryProtection.handleProtectionFault(
+                    pid, virtualAddress, isRead, isWrite, isExecute);
+                
+                if (success) {
+                    log.debug("已处理内存保护异常: 进程={}, 虚拟地址={}", pid, faultAddress);
+                    contextDTO.setAdditionalInfo(true);
+                    return contextDTO;
+                }
+                
+                // 如果无法处理，向进程发送段错误信号
+                log.debug("内存保护异常无法处理，发送段错误信号: 进程={}, 虚拟地址={}", pid, faultAddress);
+                try {
+                    processManager.getClass().getMethod("sendSignal", int.class, String.class, String.class)
+                        .invoke(processManager, pid, "SIGSEGV", "内存访问权限不足");
+                } catch (Exception e) {
+                    log.error("无法发送段错误信号: {}", e.getMessage());
+                }
+                
+                contextDTO.setAdditionalInfo(false);
+                return contextDTO;
+            } catch (Exception e) {
+                log.error("处理内存保护中断时发生异常: {}", e.getMessage(), e);
+                return contextDTO;
             }
         }
         
         return info; // 如果类型不匹配，直接返回原信息
+    }
+
+    @Override
+    public InterruptInfo execute(MemoryInterruptInfo info) {
+        return handle(info);
     }
 } 

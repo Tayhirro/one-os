@@ -3,8 +3,8 @@ package newOs.kernel.interrupt.hardwareHandler;
 import lombok.extern.slf4j.Slf4j;
 import newOs.exception.PageFaultException;
 import newOs.kernel.interrupt.HardwareInterruptHandler;
-import newOs.kernel.interrupt.InterruptContext;
-import newOs.kernel.interrupt.InterruptType;
+import newOs.kernel.interrupt.ISR;
+import newOs.common.InterruptConstant.InterruptType;
 import newOs.kernel.memory.MemoryManager;
 import newOs.kernel.memory.model.VirtualAddress;
 import newOs.kernel.memory.virtual.PageTable;
@@ -17,6 +17,7 @@ import newOs.kernel.process.ProcessManager;
 import newOs.component.memory.protected1.PCB;
 import newOs.dto.req.Info.InterruptInfo;
 import newOs.dto.req.Info.MemoryInterruptInfo;
+import newOs.dto.req.Info.InfoImplDTO.InterruptContextDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Component
 @Slf4j
-public class PageFaultHandler implements HardwareInterruptHandler {
+public class PageFaultHandler implements HardwareInterruptHandler, ISR<MemoryInterruptInfo> {
 
     /**
      * 内存管理器
@@ -123,81 +124,113 @@ public class PageFaultHandler implements HardwareInterruptHandler {
     }
 
     @Override
-    public newOs.common.InterruptConstant.InterruptType getType() {
-        return newOs.common.InterruptConstant.InterruptType.PAGE_FAULT;
+    public InterruptType getType() {
+        return InterruptType.PAGE_FAULT;
     }
 
     @Override
-    public boolean handle(InterruptContext context) {
-        if (context == null) {
-            log.error("中断上下文为空，无法处理页面错误中断");
-            return false;
+    public InterruptInfo handle(InterruptInfo info) {
+        if (info == null) {
+            log.error("中断信息为空，无法处理页面错误中断");
+            return null;
         }
         
-        // 统计开始时间
-        long startTime = System.currentTimeMillis();
-        
-        // 增加页面错误计数
-        pageFaultCount.incrementAndGet();
-        
-        try {
-            // 从中断上下文中获取进程ID和虚拟地址
-            int pid = context.getProcessId();
-            long faultAddress = context.getFaultAddress();
-            VirtualAddress virtualAddress = new VirtualAddress((int)faultAddress);
+        if (info instanceof MemoryInterruptInfo) {
+            MemoryInterruptInfo memoryInfo = (MemoryInterruptInfo) info;
+            // 统计开始时间
+            long startTime = System.currentTimeMillis();
             
-            log.debug("处理页面错误中断: 进程={}, 虚拟地址={}", pid, faultAddress);
+            // 增加页面错误计数
+            pageFaultCount.incrementAndGet();
             
-            // 获取虚拟地址对应的页面 - 修正参数顺序
-            Page page = pageTable.getPage(virtualAddress, pid);
-            
-            // 检查页面是否存在
-            if (page == null) {
-                log.debug("页面不存在，可能是非法地址访问: 进程={}, 虚拟地址={}", pid, faultAddress);
-                // 向进程发送非法内存访问异常
-                processManager.sendSignal(pid, "SIGSEGV", "非法内存地址访问");
-                return true;
+            try {
+                // 从中断信息中获取进程ID和虚拟地址
+                int pid = memoryInfo.getProcessId();
+                String addressStr = memoryInfo.getAddress();
+                long faultAddress = Long.parseLong(addressStr.replace("0x", ""), 16);
+                VirtualAddress virtualAddress = memoryInfo.getVirtualAddress();
+                if (virtualAddress == null) {
+                    virtualAddress = new VirtualAddress((int)faultAddress);
+                }
+                
+                // 获取访问类型
+                String accessType = (String) memoryInfo.getAdditionalInfo("accessType");
+                boolean isWrite = "WRITE".equals(accessType);
+                
+                log.debug("处理页面错误中断: 进程={}, 虚拟地址={}", pid, faultAddress);
+                
+                // 获取虚拟地址对应的页面
+                Page page = pageTable.getPage(virtualAddress, pid);
+                
+                // 处理页面错误逻辑
+                boolean success = handlePageFaultForProcess(pid, page, isWrite);
+                
+                // 设置处理结果
+                memoryInfo.addAdditionalInfo("success", success);
+                
+                // 统计处理时间
+                long endTime = System.currentTimeMillis();
+                long handlingTime = endTime - startTime;
+                totalHandlingTime += handlingTime;
+                handlingCount++;
+                
+                if (handlingTime > 100) {
+                    log.warn("页面错误处理时间过长: {}ms", handlingTime);
+                }
+                
+                return memoryInfo;
+            } catch (Exception e) {
+                log.error("处理页面错误中断时发生异常: {}", e.getMessage(), e);
+                memoryInfo.addAdditionalInfo("error", e.getMessage());
+                return memoryInfo;
             }
+        } else if (info instanceof InterruptContextDTO) {
+            // 向下兼容旧的InterruptContext格式
+            InterruptContextDTO contextDTO = (InterruptContextDTO) info;
+            // 统计开始时间
+            long startTime = System.currentTimeMillis();
             
-            // 检查页面是否在物理内存中
-            if (page.isPresent()) {
-                log.debug("页面已在内存中，但产生了页错误，可能是权限问题: 进程={}, 页面={}", pid, page);
-                // 如果页面已经在内存中，可能是权限问题，交给内存保护处理器处理
-                return false;
-            }
+            // 增加页面错误计数
+            pageFaultCount.incrementAndGet();
             
-            // 检查是否是由于写时复制导致的页面错误
-            if (context.isWriteAccess() && page.isShared() && page.isCopyOnWrite()) {
-                return handleCopyOnWrite(pid, page, virtualAddress);
-            }
-            
-            // 记录页面访问
-            pageReplacementManager.recordPageAccess(page);
-            
-            // 检查页面是否在交换区
-            if (page.hasSwapLocation()) {
-                // 次要页面错误（页面在交换区）
-                minorFaultCount.incrementAndGet();
-                return handleMinorPageFault(pid, page, virtualAddress);
-            } else {
-                // 主要页面错误（页面首次访问）
-                majorFaultCount.incrementAndGet();
-                return handleMajorPageFault(pid, page, virtualAddress);
-            }
-        } catch (Exception e) {
-            log.error("处理页面错误中断时发生异常: {}", e.getMessage(), e);
-            return false;
-        } finally {
-            // 统计处理时间
-            long endTime = System.currentTimeMillis();
-            long handlingTime = endTime - startTime;
-            totalHandlingTime += handlingTime;
-            handlingCount++;
-            
-            if (handlingTime > 100) {
-                log.warn("页面错误处理时间过长: {}ms", handlingTime);
+            try {
+                // 从中断上下文中获取进程ID和虚拟地址
+                int pid = contextDTO.getProcessId();
+                long faultAddress = contextDTO.getFaultAddress();
+                VirtualAddress virtualAddress = contextDTO.getVirtualAddress();
+                if (virtualAddress == null) {
+                    virtualAddress = new VirtualAddress((int)faultAddress);
+                }
+                
+                log.debug("处理页面错误中断: 进程={}, 虚拟地址={}", pid, faultAddress);
+                
+                // 获取虚拟地址对应的页面
+                Page page = pageTable.getPage(virtualAddress, pid);
+                
+                // 处理页面错误逻辑
+                boolean success = handlePageFaultForProcess(pid, page, contextDTO.isWriteAccess());
+                
+                // 统计处理时间
+                long endTime = System.currentTimeMillis();
+                long handlingTime = endTime - startTime;
+                totalHandlingTime += handlingTime;
+                handlingCount++;
+                
+                if (handlingTime > 100) {
+                    log.warn("页面错误处理时间过长: {}ms", handlingTime);
+                }
+                
+                // 设置处理结果
+                contextDTO.setAdditionalInfo(success);
+                
+                return contextDTO;
+            } catch (Exception e) {
+                log.error("处理页面错误中断时发生异常: {}", e.getMessage(), e);
+                return contextDTO;
             }
         }
+        
+        return info; // 如果类型不匹配，直接返回原信息
     }
     
     /**
@@ -560,75 +593,6 @@ public class PageFaultHandler implements HardwareInterruptHandler {
         return sb.toString();
     }
 
-    @Override
-    public InterruptInfo handle(InterruptInfo info) {
-        long startTime = System.nanoTime();
-        pageFaultCount.incrementAndGet();
-        
-        try {
-            // 将 InterruptInfo 转换为 MemoryInterruptInfo
-            if (!(info instanceof MemoryInterruptInfo)) {
-                log.warn("非页错误中断处理请求");
-                return info;
-            }
-            
-            MemoryInterruptInfo memoryInfo = (MemoryInterruptInfo) info;
-            
-            int processId = memoryInfo.getProcessId();
-            String addressStr = memoryInfo.getAddress();
-            long virtualAddress = Long.parseLong(addressStr.replace("0x", ""), 16);
-            boolean isWrite = false; // 默认为读操作
-            
-            // 处理页错误
-            boolean handled = handlePageFault(processId, virtualAddress, isWrite);
-            
-            long endTime = System.nanoTime();
-            long handlingTime = endTime - startTime;
-            
-            // 更新统计信息
-            totalHandlingTime += handlingTime;
-            handlingCount++;
-            
-            log.debug("页面错误处理完成：进程={}, 地址={}, 写入={}, 处理结果={}, 耗时={}ns",
-                    processId, virtualAddress, isWrite, handled, handlingTime);
-            
-            // 设置处理结果
-            memoryInfo.setAdditionalInfo("success", handled);
-            return memoryInfo;
-        } catch (Exception e) {
-            log.error("处理页面错误中断时发生异常: {}", e.getMessage(), e);
-            return info;
-        }
-    }
-
-    /**
-     * 处理缺页异常
-     * @param processId 进程ID
-     * @param virtualAddress 虚拟地址
-     * @param isWrite 是否是写操作
-     * @return 是否处理成功
-     */
-    public boolean handlePageFault(int processId, long virtualAddressValue, boolean isWrite) {
-        try {
-            // 构造虚拟地址对象
-            VirtualAddress virtualAddress = new VirtualAddress(virtualAddressValue);
-            
-            // 获取页面
-            Page page = pageTable.getPage(virtualAddress, processId);
-            if (page == null) {
-                log.error("缺页处理失败：页面不存在，进程={}，页号={}", 
-                         processId, virtualAddress.getPageNumber());
-                return false;
-            }
-            
-            // 处理缺页
-            return handlePageFaultForProcess(processId, page, isWrite);
-        } catch (Exception e) {
-            log.error("缺页处理失败：{}", e.getMessage(), e);
-            return false;
-        }
-    }
-    
     /**
      * 处理进程的缺页异常
      * @param processId 进程ID
@@ -728,5 +692,10 @@ public class PageFaultHandler implements HardwareInterruptHandler {
             log.error("缺页处理失败：{}", e.getMessage(), e);
             return false;
         }
+    }
+
+    @Override
+    public InterruptInfo execute(MemoryInterruptInfo info) {
+        return handle(info);
     }
 } 

@@ -93,35 +93,16 @@ public class InterruptController {
     private void registerMemoryInterruptHandlers() {
         // 注册缺页中断处理程序
         if (!IDT.containsKey(PAGE_FAULT)) {
-            IDT.put(PAGE_FAULT, new ISR<MemoryInterruptInfo>() {
-                @Override
-                public InterruptInfo execute(MemoryInterruptInfo info) {
-                    return pageFaultHandler.handle(info);
-                }
-            });
+            IDT.put(PAGE_FAULT, pageFaultHandler);
         }
         
         // 注册内存保护违规中断处理程序
         if (!IDT.containsKey(GENERAL_PROTECTION_FAULT)) {
-            IDT.put(GENERAL_PROTECTION_FAULT, new ISR<MemoryInterruptInfo>() {
-                @Override
-                public InterruptInfo execute(MemoryInterruptInfo info) {
-                    return memoryProtectionHandler.handle(info);
-                }
-            });
+            IDT.put(GENERAL_PROTECTION_FAULT, memoryProtectionHandler);
         }
         
         // 注册TLB缺失中断处理程序 - 合并到页错误处理
-        if (!IDT.containsKey(PAGE_FAULT)) {
-            IDT.put(PAGE_FAULT, new ISR<MemoryInterruptInfo>() {
-                @Override
-                public InterruptInfo execute(MemoryInterruptInfo info) {
-                    // 对于TLB缺失，可能只是更新TLB，然后重新执行指令
-                    // 在这里简单地返回原信息，实际处理应该在PageFaultHandler中完成
-                    return info;
-                }
-            });
-        }
+        // (TLB处理逻辑依然使用pageFaultHandler)
     }
     
     @SuppressWarnings("unchecked")
