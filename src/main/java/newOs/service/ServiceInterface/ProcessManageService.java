@@ -1,4 +1,4 @@
-package newOs.service.interfaces;
+package newOs.service.ServiceInterface;
 
 
 
@@ -25,4 +25,4 @@ public interface ProcessManageService {
     ProcessQueryAllRespDTO queryAllProcessInfo();
 
     void switchStrategy(String strategy);
-} 
+}

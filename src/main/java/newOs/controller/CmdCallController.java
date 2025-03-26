@@ -4,7 +4,7 @@ package newOs.controller;
 
 import newOs.dto.result.Result;
 
-import newOs.service.interfaces.ProcessManageService;
+import newOs.service.ServiaceImpl.ProcessManageServiceImpl;
 import newOs.dto.req.ProcessManage.ProcessCreateReqDTO;
 import newOs.dto.req.Info.InfoImplDTO.ProcessInfoReturnImplDTO;
 import newOs.exception.ProcessException.ProcessException;
@@ -21,12 +21,12 @@ import java.util.UUID;
 public class CmdCallController {
 
 
-    private final ProcessManageService processService; // 进程相关服务
+    private final ProcessManageServiceImpl processService; // 进程相关服务
 //    @Autowired
 //    private FileManageService fileService;       // 文件相关服务
 
     @Autowired
-    public CmdCallController(ProcessManageService processService) {
+    public CmdCallController(ProcessManageServiceImpl processService) {
         this.processService = processService;
     }
 

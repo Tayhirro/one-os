@@ -6,7 +6,6 @@ import newOs.component.cpu.Interrupt.IDTableCreate;
 import newOs.component.cpu.X86CPUSimulator;
 import newOs.component.memory.protected1.ProtectedMemory;
 import newOs.component.timer.timer;
-import newOs.dto.req.Info.InterruptInfo;
 import newOs.kernel.interrupt.ISR;
 import newOs.kernel.interrupt.hardwareHandler.IOInterruptHandler;
 import newOs.kernel.interrupt.sysCallHandler.SystemCallHandler;
@@ -21,11 +20,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Component
 public class X86IDTableCreate implements IDTableCreate{
-    private final ConcurrentHashMap<InterruptType, ISR<? extends InterruptInfo>> IDT;
+    private final ConcurrentHashMap<InterruptType, ISR> IDT;
 
     //依赖注入 处理方法
     private final SystemCallHandler systemCallHandler;
     private final IOInterruptHandler iOInterruptHandler;
+    private final newOs.component.timer.timer timer;
     private final TimerHandler timerHandler;
 
     @Autowired
@@ -33,6 +33,7 @@ public class X86IDTableCreate implements IDTableCreate{
         this.IDT = protectedMemory.getIDT();
         this.systemCallHandler = systemCallHandler;
         this.iOInterruptHandler = IOInterruptHandler;
+        this.timer = timer;
         this.timerHandler = timerHandler;
     }
 

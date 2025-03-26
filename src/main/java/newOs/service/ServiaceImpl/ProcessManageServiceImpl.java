@@ -1,4 +1,4 @@
-package newOs.service.impl;
+package newOs.service.ServiaceImpl;
 
 
 import newOs.dto.req.Info.InfoImplDTO.ProcessInfoImplDTO;
@@ -9,7 +9,7 @@ import newOs.dto.resp.ProcessManage.ProcessQueryAllRespDTO;
 import newOs.exception.Dispatch_Dismatch_Exception;
 import newOs.exception.OSException;
 import newOs.kernel.interrupt.InterruptController;
-import newOs.service.interfaces.ProcessManageService;
+import newOs.service.ServiceInterface.ProcessManageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -78,4 +78,4 @@ public class ProcessManageServiceImpl implements ProcessManageService {
     @Override
     public void switchStrategy(String strategy) {    //切换调度策略，转发给kernel的syscall
     }
-} 
+}

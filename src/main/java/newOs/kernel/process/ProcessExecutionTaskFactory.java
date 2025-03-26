@@ -13,11 +13,11 @@ import org.springframework.stereotype.Component;
 public class ProcessExecutionTaskFactory {
     private final newOs.kernel.interrupt.hardwareHandler.ISRHandler ISRHandler;
     private final ProtectedMemory protectedMemory;
-    private SideScheduler sideScheduler;
-    private InterruptController interruptController;
+    private final SideScheduler sideScheduler;
+    private final InterruptController interruptController;
 
     @Autowired
-    public ProcessExecutionTaskFactory(ISRHandler handlerISR, ProtectedMemory protectedMemory,SideScheduler sideScheduler,InterruptController interruptController){
+    public ProcessExecutionTaskFactory(ISRHandler handlerISR, ProtectedMemory protectedMemory, SideScheduler sideScheduler, InterruptController interruptController){
         this.ISRHandler = handlerISR;
         this.protectedMemory = protectedMemory;
         this.sideScheduler = sideScheduler;
@@ -25,6 +25,6 @@ public class ProcessExecutionTaskFactory {
     }
 
     public ProcessExecutionTask createTask(PCB pcb) {
-        return new ProcessExecutionTask(pcb, protectedMemory, ISRHandler, sideScheduler, interruptController);
+        return new ProcessExecutionTask(pcb, protectedMemory, ISRHandler, sideScheduler,interruptController);
     }
 }
