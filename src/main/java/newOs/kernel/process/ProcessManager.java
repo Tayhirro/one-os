@@ -106,6 +106,10 @@ public class ProcessManager{
                     //设置cordid
                     pcb.setCoreId(i);
                     //唤醒调度器
+                    ！//先分配内存
+                    ！分配内存，应该注入一个内存管理器用于memoryallocate
+                    ！
+                    ！
                     cpuSimulatorExecutors[i].submit(processExecutionTask);
                     break;
                 }

@@ -59,7 +59,7 @@ public class SideScheduler {
     @Autowired
     public SideScheduler(ProtectedMemory protectedMemory, X86CPUSimulator x86CPUSimulator, ISRHandler isrHandler, InterruptController interruptController){
 
-
+        ！！！分配内存，应该注入一个内存管理器用于memoryallocate
 
         this.readyQueue = protectedMemory.getReadyQueue();
         this.runningQueue = protectedMemory.getRunningQueue();
@@ -154,6 +154,10 @@ public class SideScheduler {
                 //
                 x86CPUSimulator.getExecutorServiceReady().get(0).decrementAndGet();
                 //
+
+                ！！！！！ 此处分配内存
+                 ！！！！
+
                 cpuSimulatorExecutors[coreId].submit(
                         new ProcessExecutionTask(firstCorePcb , protectedMemory, isrHandler, this,interruptController)
                 );
